@@ -1,0 +1,15 @@
+node_modules/
+config.json
+.DS_Store
+
+# Ignore all data outputs except the .gitkeep
+data/*
+!data/.gitkeep
+
+# Ignore all generated outputs except the .gitkeep
+generated/*
+!generated/.gitkeep
+
+# Ignore all logs except the .gitkeep
+logs/*
+!logs/.gitkeep

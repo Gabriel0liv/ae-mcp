@@ -1,0 +1,17 @@
+{
+  "name": "ae-mcp-bridge",
+  "version": "1.0.0",
+  "description": "Local bridge between Adobe After Effects and AI agents",
+  "main": "node/cli.js",
+  "scripts": {
+    "cli": "node node/cli.js"
+  },
+  "keywords": [
+    "after-effects",
+    "extendscript",
+    "bridge",
+    "mcp"
+  ],
+  "author": "",
+  "license": "MIT"
+}
