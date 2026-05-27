@@ -141,4 +141,69 @@ node node/cli.js text-flicker
 
 ## 💡 Pasta `knowledge/` (Base de Conhecimento)
 
-A pasta `knowledge/` serve para guardar anotações manuais em Markdown sobre fluxos de trabalho (MMV), parâmetros ideais de efeitos de glow/shake, limitações e guias rápidos de uso de ferramentas complexas (como Duik Angela, AutoSway, RTFX) para consulta direta da IA. Veja mais em [knowledge/README.md](file:///d:/documentos/Projetos/AE-mcp/knowledge/README.md).
+A pasta `knowledge/` serve para guardar anotações manuais em Markdown sobre fluxos de trabalho (MMV), parâmetros de efeitos de glow/shake, limitações e guias rápidos de uso de ferramentas (como Duik Angela, AutoSway, RTFX) para consulta direta da IA.
+
+---
+
+## 🤖 AE Editing Copilot (Assistente de Edição)
+
+O `AE-mcp` evoluiu para incluir uma camada de **Assistente de Edição (AE Editing Copilot)**, focada no fluxo de trabalho de MMVs (Music Movie Videos), AMVs, anime edits e sincronização de batidas (beat sync). 
+
+A arquitetura de assistente ajuda a IA a entender tanto o contexto técnico do seu After Effects quanto os guias de boas práticas criativas e solução de problemas locais.
+
+### Comandos do Copilot
+```bash
+# 1. Obter conselho de contexto (sugere quais comandos rodar e arquivos enviar para a IA)
+node node/cli.js context-advisor "sua pergunta aqui"
+
+# Exemplo com saída JSON para MCP / Integração:
+node node/cli.js context-advisor "quero fazer um impacto no beat" --json
+
+# 2. Exportar diagnósticos detalhados da composição ativa (gera data/diagnostics.json)
+node node/cli.js export-diagnostics
+
+# 3. Compilar um pacote de revisão completo para enviar para a IA (gera pasta em data/review_packages/)
+node node/cli.js export-review-package
+
+# 4. Executar os diagnósticos e exports principais e depois empacotar tudo em lote
+node node/cli.js export-review-package --run-checks
+```
+
+### Exemplos Práticos de Uso
+
+#### Exemplo A: "como faço um impacto no beat?"
+1. Execute o conselheiro de contexto:
+   ```bash
+   node node/cli.js context-advisor "como faço um impacto no beat?"
+   ```
+2. O script identificará o intent `how_to`/`plan_workflow` com alta confiança, sugerindo os guias relevantes (ex: `knowledge/workflows/mmv-impact.md` e `knowledge/tools/rtfx.md`) e os arquivos de dados a serem enviados.
+
+#### Exemplo B: "meu AutoSway não funciona no cabelo"
+1. Execute o conselheiro de contexto:
+   ```bash
+   node node/cli.js context-advisor "meu AutoSway não funciona no cabelo"
+   ```
+2. O conselheiro identificará o intent `troubleshoot`, sugerindo a execução do pacote de revisão completo e recomendando guias como `knowledge/troubleshooting/autosway-not-working.md`.
+3. Gere o pacote executando diagnósticos frescos no After Effects:
+   ```bash
+   node node/cli.js export-review-package --run-checks
+   ```
+4. Navegue até a pasta criada `data/review_packages/<timestamp>/`, abra o arquivo `prompt_for_ai.md`, preencha os campos de contexto criativo e envie o pacote para análise.
+
+#### Exemplo C: "minha composição está estranha"
+1. Execute o conselheiro:
+   ```bash
+   node node/cli.js context-advisor "minha composição está estranha"
+   ```
+2. O sistema identificará um `visual_review` (análise estética).
+3. Gere o pacote de revisão com `node node/cli.js export-review-package --run-checks`.
+4. Envie o pacote para a IA analisar. 
+
+> [!NOTE]
+> **Avaliação de Estética Visual**: A IA não consegue avaliar a estética de imagens e vídeos de forma puramente matemática a partir do código ou de metadados estruturais sem mídias reais de frames ou pré-visualizações de vídeo (recurso planejado para o futuro). No entanto, o **Pacote de Revisão** ajuda a IA a mapear com extrema precisão a hierarquia de layers, tempo de tela, presença de motion blur, curvas de keyframes no gráfico e potenciais erros ocultos que causam a estranheza técnica.
+
+---
+
+## 🔒 Regras de Segurança do Copilot
+* **Zero Alterações**: O assistente atua de forma estritamente analítica nesta fase. Ele **não** modifica o seu projeto `.aep` original, **não** deleta camadas e **não** aplica JSX de edição automaticamente sem seu consentimento explícito.
+* **Diagnósticos em Cópia**: Qualquer ajuste gerado ou sugerido pela IA deve ser testado em uma cópia segura do seu projeto ou composição.

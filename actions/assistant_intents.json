@@ -1,0 +1,42 @@
+[
+  {
+    "intent": "how_to",
+    "description": "User asks how to create an effect, animation or workflow.",
+    "needsInventory": true,
+    "needsKnowledge": true,
+    "needsProjectContext": false,
+    "needsVisualContext": false
+  },
+  {
+    "intent": "troubleshoot",
+    "description": "User says something is not working or returns an error.",
+    "needsInventory": true,
+    "needsKnowledge": true,
+    "needsProjectContext": true,
+    "needsVisualContext": false
+  },
+  {
+    "intent": "visual_review",
+    "description": "User says something looks wrong, ugly, weak, off, not matching style or timing.",
+    "needsInventory": true,
+    "needsKnowledge": true,
+    "needsProjectContext": true,
+    "needsVisualContext": true
+  },
+  {
+    "intent": "plan_workflow",
+    "description": "User wants to make something and asks for possible approaches.",
+    "needsInventory": true,
+    "needsKnowledge": true,
+    "needsProjectContext": false,
+    "needsVisualContext": false
+  },
+  {
+    "intent": "safe_edit_proposal",
+    "description": "User wants the assistant to generate a safe JSX edit plan.",
+    "needsInventory": true,
+    "needsKnowledge": true,
+    "needsProjectContext": true,
+    "needsVisualContext": false
+  }
+]

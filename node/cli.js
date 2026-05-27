@@ -10,6 +10,7 @@ const COMMAND_MAP = {
     'check-missing-footage': 'check_missing_footage.jsx',
     'check-expression-errors': 'check_expression_errors.jsx',
     'export-effects': 'export_effects_catalog.jsx',
+    'export-diagnostics': 'export_diagnostics.jsx',
     'mmv-shake': 'mmv_shake_selected.jsx',
     'zoom-impact': 'zoom_impact_selected.jsx',
     'text-flicker': 'text_flicker_selected.jsx'
@@ -26,6 +27,38 @@ if (command === 'scan-inventory') {
     });
     
     scanProcess.on('close', (code) => {
+        process.exit(code);
+    });
+    return;
+}
+
+// Command: context-advisor (runs locally in Node.js)
+if (command === 'context-advisor') {
+    const { spawn } = require('child_process');
+    const path = require('path');
+    
+    const advisorArgs = [path.join(__dirname, 'context-advisor.js'), ...process.argv.slice(3)];
+    const advisorProcess = spawn(process.execPath, advisorArgs, {
+        stdio: 'inherit'
+    });
+    
+    advisorProcess.on('close', (code) => {
+        process.exit(code);
+    });
+    return;
+}
+
+// Command: export-review-package (runs locally in Node.js)
+if (command === 'export-review-package') {
+    const { spawn } = require('child_process');
+    const path = require('path');
+    
+    const reviewArgs = [path.join(__dirname, 'review-package.js'), ...process.argv.slice(3)];
+    const reviewProcess = spawn(process.execPath, reviewArgs, {
+        stdio: 'inherit'
+    });
+    
+    reviewProcess.on('close', (code) => {
         process.exit(code);
     });
     return;
@@ -208,7 +241,7 @@ Resultado do Diagnóstico: ${valid ? 'SUCESSO (Configuração Válida)' : 'ERRO 
 if (!command || !COMMAND_MAP[command]) {
     console.log(`
 =============================================================================
-AE-MCP Bridge - CLI Local (Fase Tool Inventory)
+AE-MCP Bridge - CLI Local (Fase AE Editing Copilot)
 =============================================================================
 Uso:
   node node/cli.js <comando>
@@ -216,6 +249,8 @@ Uso:
 Comandos de Utilitários:
   check-config               Verifica caminhos, diretórios de inventário e scripts.
   scan-inventory             Mapeia localmente plugins, scripts, presets e docs.
+  context-advisor <query>    Sugere comandos e arquivos baseados no contexto da pergunta.
+  export-review-package      Compila arquivos de diagnóstico e manifestos para IA.
 
 Comandos de Leitura (Gera arquivos JSON na pasta 'data/'):
   export-effects             Exporta catálogo de efeitos instalados no After Effects.
@@ -223,6 +258,7 @@ Comandos de Leitura (Gera arquivos JSON na pasta 'data/'):
   export-selected-layers     Exporta transformações e keyframes dos layers selecionados.
   check-missing-footage      Identifica footages ausentes no projeto.
   check-expression-errors    Faz varredura profunda por erros de expressões.
+  export-diagnostics         Varre composições para emitir diagnósticos técnicos detalhados.
 
 Comandos de Edição (Cria cópia segura e aplica efeitos/expressões):
   mmv-shake                  Aplica tremor de posição e ativa Motion Blur.
@@ -232,7 +268,8 @@ Comandos de Edição (Cria cópia segura e aplica efeitos/expressões):
 Exemplos:
   node node/cli.js check-config
   node node/cli.js scan-inventory
-  node node/cli.js export-effects
+  node node/cli.js context-advisor "meu AutoSway nao funciona no cabelo"
+  node node/cli.js export-review-package --run-checks
 =============================================================================
 `);
     process.exit(1);
