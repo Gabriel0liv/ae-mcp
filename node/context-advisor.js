@@ -196,7 +196,45 @@ if (fs.existsSync(path.join(__dirname, '../data/tool_capabilities.json'))) {
     filesToSendToAI.push("data/tool_capabilities.example.json");
 }
 
-if (intent === "troubleshoot") {
+let isProjectWide = false;
+let isCompSpecific = false;
+let targetedCompName = "";
+
+const projectKeywords = ["projeto inteiro", "projeto todo", "todas as comps", "todas as composições", "quais comps", "comp principal", "main comp", "onde é usado", "onde o asset", "onde precomp", "dependencia", "dependência", "estrutura do projeto", "mapear projeto", "mapa do projeto", "project-wide", "summary", "mapa"];
+if (projectKeywords.some(k => lowerQuery.includes(k))) {
+    isProjectWide = true;
+}
+
+const compMatch = lowerQuery.match(/(?:comp|composição|composicao)\s+['"“]?([a-zA-Z0-9_\-\sáàâãéèêíïóôõöúçñ]{2,})['"”]?/i);
+if (compMatch) {
+    isCompSpecific = true;
+    targetedCompName = compMatch[1].trim();
+}
+
+if (isProjectWide) {
+    recommendedCommands = [
+        "node node/cli.js export-project-summary",
+        "node node/cli.js export-project-map",
+        "node node/cli.js export-review-package"
+    ];
+    bestNextCommand = "node node/cli.js export-project-summary";
+    filesToSendToAI.push("data/project_summary.json", "data/project_map.json");
+    intent = "project_wide";
+    confidence = "high";
+    reason = "Detectado interesse em analisar a estrutura global ou dependências do projeto After Effects.";
+} else if (isCompSpecific && targetedCompName) {
+    const sanitizeFilename = (name) => name.replace(/[^a-zA-Z0-9_\-]/g, "_");
+    recommendedCommands = [
+        `node node/cli.js export-comp-by-name "${targetedCompName}"`,
+        "node node/cli.js export-project-summary",
+        "node node/cli.js export-review-package"
+    ];
+    bestNextCommand = `node node/cli.js export-comp-by-name "${targetedCompName}"`;
+    filesToSendToAI.push(`data/comps/${sanitizeFilename(targetedCompName)}.json`);
+    intent = "comp_specific";
+    confidence = "high";
+    reason = `Detectado interesse em uma composição específica: "${targetedCompName}".`;
+} else if (intent === "troubleshoot") {
     recommendedCommands = [
         "node node/cli.js export-diagnostics",
         "node node/cli.js check-expression-errors",

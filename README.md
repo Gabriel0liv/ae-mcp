@@ -169,6 +169,41 @@ node node/cli.js export-review-package
 node node/cli.js export-review-package --run-checks
 ```
 
+### Phase 3.5 — Project-Wide Context (Análise de Todo o Projeto)
+
+Esta fase adiciona comandos para analisar o projeto inteiro, permitindo que a IA entenda a estrutura de composições, dependências de precomps/footages e problemas globais mesmo quando nenhuma composição está ativa na tela.
+
+#### Novos Comandos Project-Wide:
+```bash
+# 1. Exporta resumo leve de todas as comps, configurações e candidatos a comp principal (gera data/project_summary.json)
+node node/cli.js export-project-summary
+
+# 2. Exporta mapa estrutural de dependências, layers e expressões resumidas (gera data/project_map.json)
+node node/cli.js export-project-map
+
+# 3. Exporta propriedades profundas e keyframes (heavy scan, gera data/project_deep.json)
+node node/cli.js export-project-deep
+
+# 4. Exporta dados detalhados de uma composição específica por nome ou ID (mode: summary|map|deep, gera data/comps/<nome>.json)
+node node/cli.js export-comp-by-name "Nome Da Minha Comp" map
+node node/cli.js export-comp-by-name 123 deep
+```
+
+#### Diretrizes de Uso e Segurança:
+* **Leves e Seguros**: Os comandos `export-project-summary` e `export-project-map` são leves e seguros para rodar com frequência. Eles são executados automaticamente ao rodar `export-review-package --run-checks` para garantir que a IA tenha uma visão completa do projeto.
+* **Scan Profundo (Heavy)**: O comando `export-project-deep` pode ser extremamente pesado dependendo do tamanho do projeto (pois percorre todas as propriedades e keyframes de todas as camadas). Por isso:
+  * **Não é executado automaticamente** por `export-review-package --run-checks`.
+  * Deve ser usado manualmente apenas quando necessário.
+  * Pode ser configurado/limitado editando o arquivo `data/project_deep_request.json` (que é gerado automaticamente com limites padrão seguros ao rodar o comando pela primeira vez). Os campos suportados são:
+    * `maxComps` (padrão: 5)
+    * `maxLayersPerComp` (padrão: 20)
+    * `maxPropertiesPerLayer` (padrão: 50)
+    * `includeExpressions` (padrão: true)
+    * `includeExpressionSource` (padrão: false - se true, exporta o código completo da expressão)
+    * `includeKeyframes` (padrão: `"summary"`, valores suportados: `"none"`, `"summary"`, `"values"`)
+* **Nomes Duplicados**: O comando `export-comp-by-name` lidará de forma segura com composições que possuem nomes idênticos no projeto. Se duplicatas forem encontradas, o comando retornará um arquivo JSON de erro com o código `MULTIPLE_COMPS_FOUND` e uma lista com o ID e o nome de cada correspondência para que você possa especificar o `compId` único na próxima execução.
+```
+
 ### Exemplos Práticos de Uso
 
 #### Exemplo A: "como faço um impacto no beat?"

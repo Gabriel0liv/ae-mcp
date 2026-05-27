@@ -39,7 +39,9 @@ const expectedAEFiles = [
     { key: "selected_layers.json", path: "selected_layers.json", runArg: "export-selected-layers" },
     { key: "expression_errors.json", path: "expression_errors.json", runArg: "check-expression-errors" },
     { key: "missing_footage.json", path: "missing_footage.json", runArg: "check-missing-footage" },
-    { key: "diagnostics.json", path: "diagnostics.json", runArg: "export-diagnostics" }
+    { key: "diagnostics.json", path: "diagnostics.json", runArg: "export-diagnostics" },
+    { key: "project_summary.json", path: "project_summary.json", runArg: "export-project-summary" },
+    { key: "project_map.json", path: "project_map.json", runArg: "export-project-map" }
 ];
 
 if (runChecks) {
@@ -88,6 +90,8 @@ const filesToCopy = [
     { key: "expression_errors.json", source: path.join(paths.dataDir, "expression_errors.json") },
     { key: "missing_footage.json", source: path.join(paths.dataDir, "missing_footage.json") },
     { key: "diagnostics.json", source: path.join(paths.dataDir, "diagnostics.json") },
+    { key: "project_summary.json", source: path.join(paths.dataDir, "project_summary.json") },
+    { key: "project_map.json", source: path.join(paths.dataDir, "project_map.json") },
     { key: "local_inventory.json", source: path.join(paths.dataDir, "local_inventory.json") },
     { key: "tool_groups.json", source: path.join(paths.dataDir, "tool_groups.json") },
     { key: "effects_catalog.json", source: path.join(paths.dataDir, "effects_catalog.json") }
@@ -120,6 +124,36 @@ for (const fileItem of filesToCopy) {
             recommendedNextCommands.push(`node node/cli.js ${aeFile.runArg}`);
         } else if (fileItem.key === "local_inventory.json") {
             recommendedNextCommands.push("node node/cli.js scan-inventory");
+        }
+    }
+}
+
+// Copy project_deep.json if it exists
+const deepPath = path.join(paths.dataDir, "project_deep.json");
+if (fs.existsSync(deepPath)) {
+    const destPath = path.join(packageDir, "project_deep.json");
+    fs.copyFileSync(deepPath, destPath);
+    includedFiles.push("project_deep.json");
+}
+
+// Copy any comp JSON files from data/comps/*.json
+const compsDir = path.join(paths.dataDir, "comps");
+if (fs.existsSync(compsDir)) {
+    const compFiles = fs.readdirSync(compsDir);
+    let compsDestCreated = false;
+    for (const f of compFiles) {
+        if (f.endsWith('.json')) {
+            const src = path.join(compsDir, f);
+            const compsDestDir = path.join(packageDir, "comps");
+            if (!compsDestCreated) {
+                if (!fs.existsSync(compsDestDir)) {
+                    fs.mkdirSync(compsDestDir, { recursive: true });
+                }
+                compsDestCreated = true;
+            }
+            const dest = path.join(compsDestDir, f);
+            fs.copyFileSync(src, dest);
+            includedFiles.push(`comps/${f}`);
         }
     }
 }
