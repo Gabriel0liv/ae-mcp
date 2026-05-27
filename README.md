@@ -16,31 +16,38 @@ A ponte opera com quatro arquivos de dados e catálogos:
 
 ### 2. Inventário de Arquivos Locais (`local_inventory.json`)
 * **Como é gerado**: Executado localmente pelo Node.js com `scan-inventory`.
-* **O que mostra**: Metadados (nome, caminho, extensão, tamanho, data de modificação) de arquivos mapeados de forma dedupada.
-* **Categoria por Contexto**: O campo `category` representa a classificação real baseada na extensão do arquivo e na estrutura do caminho, não sendo uma simples herança da pasta raiz (ex: scripts `.jsxbin` ou presets `.ffx` localizados dentro de subpastas do diretório de Plug-ins serão classificados corretamente como `script_compiled` ou `preset`).
+* **O que mostra**: Metadados de arquivos mapeados de forma dedupada.
+* **Categoria por Contexto**: O campo `category` representa a classificação baseada na extensão e na estrutura do caminho, não sendo uma simples herança da pasta raiz.
+* **Grupos em Dois Níveis**: Cada item rastreado possui os campos:
+  * `parentFolderGroup`: Nome da pasta pai imediata do arquivo.
+  * `topLevelToolGroup`: Nome da primeira pasta relativa ao `sourceRoot`. Se o arquivo estiver diretamente na raiz do `sourceRoot`, esse campo será `null`.
+  * *Exemplo*: Um preset localizado em `Plug-ins/RTFX/Transitions/Impact.ffx` terá `parentFolderGroup` como `"Transitions"` e `topLevelToolGroup` como `"RTFX"`.
 
 ### 3. Agrupamento de Ferramentas (`tool_groups.json`)
-* **Como é gerado**: Compilado automaticamente durante a execução do comando `scan-inventory`.
-* **O que mostra**: Pastas agrupadas como ferramentas ou pacotes de ferramentas (ex: *RTFX*).
-* **Regras de Agrupamento**: Uma pasta gera um grupo apenas se:
+* **Como é gerado**: Compilado automaticamente durante a execução de `scan-inventory`.
+* **O que mostra**: Pastas estruturadas como pacotes ou ferramentas (ex: *RTFX*, *Duik*).
+* **groupLevel (Níveis de Grupo)**:
+  * `"parent"`: Mapeia o diretório pai imediato contendo arquivos (ex: a subpasta `"Transitions"` dentro de `RTFX`).
+  * `"topLevel"`: Mapeia a primeira pasta relativa ao `sourceRoot` (ex: a pasta raiz do pacote `"RTFX"`), acumulando todos os arquivos contidos em qualquer uma de suas subpastas (como `Transitions` e `UI`).
+  * *Deduplicação de Grupos*: O scanner usa a chave combinada `groupLevel + ":" + normalizedPath` para garantir que um diretório que seja ao mesmo tempo pai e raiz de ferramenta não sofra colisão no dedupe e seja catalogado corretamente em ambos os níveis.
+* **Agrupamento Inteligente**: Uma pasta gera um grupo apenas se:
   * Contiver 2 ou mais arquivos relevantes;
   * OU o nome da pasta corresponder a um termo conhecido (ex: *Duik, AutoSway, RTFX, Red Giant, Sapphire, BCC, Mister Horse*);
-  * OU contiver uma mistura de tipos de arquivos relevantes (ex: scripts + presets, plugins + scripts).
-* **Metadados de Grupo**: Inclui o nível de confiança do mapeamento (`high`, `medium`, `low`), categorização (`tool_package`, `preset_pack`, `mixed_tool_package`, etc.), as extensões encontradas e uma justificativa explicativa (`reason`).
+  * OU contiver uma mistura de tipos de arquivos (ex: scripts + presets).
+* **Metadados de Grupo**: Inclui a categorização (`tool_package`, `preset_pack`, `mixed_tool_package`, etc.), extensões, quantidade de arquivos (`fileCount`), o fornecedor provável (`possibleVendor`), flags booleanas de conteúdo (`containsScripts`, `containsPresets`, `containsPlugins`, `containsPanels`, `containsDocs`) e uma justificativa explicativa (`reason`).
 
 ### 4. Capacidades das Ferramentas (`tool_capabilities.example.json` / `tool_capabilities.json`)
 * **O que é**: Mapeamento que ensina à IA os casos de uso, nível de automação e limitações de cada ferramenta.
-* **Uso Local**: O arquivo `tool_capabilities.example.json` é versionado no Git como modelo. Copie-o para criar o arquivo local **`data/tool_capabilities.json`**.
-* **Segurança do Usuário**: O arquivo real `data/tool_capabilities.json` é ignorado pelo Git, permitindo que você adicione anotações privadas, caminhos específicos do seu ambiente e preferências pessoais.
+* **Uso Local**: O arquivo `tool_capabilities.example.json` é versionado no Git como modelo. Copie-o para criar o arquivo local **`data/tool_capabilities.json`** (que já está configurado no `.gitignore` para preservar suas preferências privadas locais).
 
 ---
 
 ## 🔒 Regras de Segurança e Privacidade
 
-O escaneamento local foi projetado seguindo princípios rígidos de privacidade:
+O escaneamento local segue regras rígidas:
 * **Strict Metadata-Only (Sem Leitura de Conteúdo)**: Nenhum arquivo é aberto ou lido internamente (isso inclui arquivos de script `.jsx`, textos `.txt`, Markdown `.md`, HTML `.html`, JSON `.json` ou documentos `.pdf`). Apenas atributos do sistema de arquivos são catalogados.
-* **Filtro de Diretórios e Arquivos Sensíveis**: O scanner ignora completamente qualquer diretório ou arquivo que contenha termos de chaves, senhas, licenças ou hacks. Se uma pasta for nomeada com um termo sensível (ex: `license`, `serial`, `keygen`, `crack`, `auth`, `credentials`), ela e todo o seu conteúdo são sumariamente ignorados.
-* **Sem Transferência ou Cópia**: Nenhum binário ou dado local é movido ou transmitido. Tudo permanece no seu computador.
+* **Filtro de Diretórios e Arquivos Sensíveis**: O scanner ignora completamente qualquer diretório ou arquivo contendo termos de chaves, senhas ou licenças. Se uma pasta for nomeada com um termo sensível (ex: `license`, `serial`, `crack`, `auth`, `credentials`), ela e todo o seu conteúdo são ignorados. O termo `auth` foi refined para evitar falsos positivos com palavras como `author` ou `authoring`.
+* **Sem Transferência ou Cópia**: Tudo permanece local.
 
 ---
 
@@ -58,7 +65,8 @@ Para permitir exportações de metadados dentro do After Effects:
    ```bash
    copy config.example.json config.json
    ```
-2. Abra o arquivo `config.json` e configure os caminhos do After Effects e das pastas de inventário do seu sistema. Utilize `mixedContentDirs` para diretórios que contenham múltiplos tipos de ferramentas misturadas (como a pasta `Plug-ins` do After Effects 2025):
+2. Abra o arquivo `config.json` e configure os caminhos do After Effects e das pastas de inventário do seu sistema.
+   * **Inventário de Pastas Mistas (`mixedContentDirs`)**: A pasta de Plug-ins do After Effects (`D:\After Effects\Adobe After Effects 2025\Support Files\Plug-ins`) deve ser mantida apenas nesta chave. Isso ocorre porque ela é uma pasta mista (contendo presets, scripts compilados, painéis e subpastas de ferramentas). Deixe `pluginDirs` para pastas dedicadas unicamente a plugins binários tradicionais (como MediaCore).
    ```json
    {
      "afterEffectsPath": "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\AfterFX.exe",
@@ -67,7 +75,6 @@ Para permitir exportações de metadados dentro do After Effects:
      "logDir": "logs",
      "inventory": {
        "pluginDirs": [
-         "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Plug-ins",
          "C:\\Program Files\\Adobe\\Common\\Plug-ins\\7.0\\MediaCore"
        ],
        "scriptDirs": [

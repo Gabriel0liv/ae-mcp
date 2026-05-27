@@ -5,7 +5,6 @@
   "logDir": "logs",
   "inventory": {
     "pluginDirs": [
-      "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Plug-ins",
       "C:\\Program Files\\Adobe\\Common\\Plug-ins\\7.0\\MediaCore"
     ],
     "scriptDirs": [
