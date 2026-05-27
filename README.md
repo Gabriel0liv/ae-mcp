@@ -2,41 +2,41 @@
 
 O `AE-mcp` é uma ponte (bridge) local e segura desenvolvida para permitir que agentes de Inteligência Artificial inspecionem, analisem e apliquem edições controladas em projetos abertos no Adobe After Effects (AE) no Windows.
 
-Esta fase inicial do projeto foca em **estabilizar a comunicação local via scripts JSX e utilitários Node.js (CLI)**. A integração com o Model Context Protocol (MCP) real de agentes de IA e interfaces visuais será realizada em uma fase posterior.
+Esta fase (**Tool Inventory**) permite mapear o ecossistema local do After Effects: quais plugins, scripts, painéis, presets, extensões e documentações estão instalados no seu computador, fornecendo um inventário rico para tomada de decisão pela IA.
 
 ---
 
-## Recursos Principais
+## 📂 Recursos de Inventário e Catálogos
 
-### Leitura e Exportação
-1. **Composição Ativa (`export-active-comp`)**: Extrai metadados completos da composição aberta e lista detalhada de layers (atributos, blending modes, detecção de efeitos, máscaras e expressões).
-2. **Layers Selecionados (`export-selected-layers`)**: Exporta transformações (Anchor Point, Position, Scale, Rotation, Opacity) e seus keyframes/curvas de interpolação.
-3. **Footage Ausente (`check-missing-footage`)**: Varre a biblioteca do projeto e aponta arquivos offline/missing.
-4. **Erros de Expressão (`check-expression-errors`)**: Varredura profunda e recursiva por todas as propriedades (incluindo efeitos, máscaras, textos e shapes) para identificar expressões quebradas, usando try/catch individualizado para evitar travamentos.
+A ponte opera com dois tipos de rastreamento fundamentais:
 
-### Aplicação de Presets Seguros (MMV / Animação)
-1. **MMV Shake (`mmv-shake`)**: Duplica a composição ativa, ativa o Motion Blur e aplica tremor (wiggle) aos layers selecionados.
-2. **Zoom Impact (`zoom-impact`)**: Duplica a composição ativa e aplica uma animação curta e dinâmica de impacto (escala e posição) com curvas de Easing suaves nos layers selecionados.
-3. **Text Opacity Flicker (`text-flicker`)**: Duplica a composição ativa e aplica expressão de flicker estroboscópico de opacidade nos layers selecionados.
+### 1. Catálogo de Efeitos (`effects_catalog.json`)
+* **Como é gerado**: Executado diretamente dentro do After Effects através do comando `export-effects`.
+* **O que mostra**: A lista real de efeitos instalados que o After Effects **reconhece de fato** (usando `app.effects`), incluindo o Match Name de efeitos de terceiros (ex: Red Giant, Video Copilot, etc.), categorias e versões.
 
----
+### 2. Inventário de Arquivos Locais (`local_inventory.json`)
+* **Como é gerado**: Executado localmente pelo Node.js (sem abrir o After Effects) através do comando `scan-inventory`.
+* **O que mostra**: Arquivos e pastas mapeados recursivamente nas pastas de plugins, scripts, ScriptUI panels, presets e CEP do sistema.
+* **Ferramentas Identificadas**: Classifica se as ferramentas são scripts simples, ScriptUI Panels (como *Duik Angela* e *AutoSway*), extensões CEP/ZXP, presets individuais `.ffx` ou pacotes de presets (como *RTFX*).
 
-## 🔒 Regras de Segurança Críticas (Integridade do Projeto)
-
-Para proteger seus arquivos de produção, a ponte segue regras rígidas:
-* **Duplicação Obrigatória**: Presets de edição **nunca** modificam a composição original. Uma cópia é gerada com sufixo (ex: `_AI_Shake_001`).
-* **Rastreamento por Índice**: Os layers selecionados no momento da execução são identificados por seus índices na composição original e mapeados diretamente na composição duplicada. Isso evita perda de referências após a duplicação.
-* **Sem Destruição**: O script nunca apaga layers, composições ou deleta arquivos `.aep`.
-* **Sem Sobrescrita**: Arquivos de projeto nunca são salvos por cima do original.
-* **Undo Amigável**: Todas as ações são agrupadas via `app.beginUndoGroup()` e `app.endUndoGroup()`, permitindo reverter as alterações no After Effects com um simples `Ctrl + Z`.
+### 3. Recursos de Ferramentas (`tool_capabilities.example.json`)
+* **O que é**: Um arquivo de modelo onde o usuário anota as capacidades de automação de ferramentas complexas (Duik Angela, AutoSway, RTFX) para guiar o agente de IA sobre como recomendar, usar ou interagir com cada uma delas.
 
 ---
 
-## 🚀 Requisitos e Configuração
+## 🔒 Regras de Segurança e Privacidade
+
+O escaneamento local foi projetado seguindo princípios rígidos de segurança e privacidade:
+* **Sem Leitura de Binários**: Arquivos compactados ou compilados (`.aex`, `.zxp`, `.jsxbin`, `.ffx`) **nunca** são abertos ou lidos pelo conteúdo. Apenas seus metadados (nome, tamanho, data de modificação e caminho) são mapeados.
+* **Filtro Antivazamento de Licenças**: O scanner ignora automaticamente qualquer arquivo ou pasta que contenha em seu nome termos associados a ativações, senhas ou licenças (ex: `license`, `licence`, `serial`, `keygen`, `crack`, `activation`, `token`, `password`).
+* **Sem Transferência de Arquivos**: Nenhum binário ou arquivo de script é copiado, movido ou transmitido para fora do seu computador. Tudo permanece local.
+
+---
+
+## 🚀 Configuração e Requisitos
 
 ### 1. Habilitar Gravação de Arquivos no After Effects
-Para que o After Effects permita que os scripts JSX exportem arquivos JSON locais, você deve ativar a seguinte opção:
-
+Para permitir exportações de metadados dentro do After Effects:
 1. Abra o After Effects.
 2. Vá em **Edit > Preferences > General** (Editar > Preferências > Geral).
 3. Marque a caixa: **Allow Scripts to Write Files and Access Network** (Permitir que os scripts gravem arquivos e acessem a rede).
@@ -47,84 +47,73 @@ Para que o After Effects permita que os scripts JSX exportem arquivos JSON locai
    ```bash
    copy config.example.json config.json
    ```
-2. Abra o arquivo `config.json` e configure os caminhos de acordo com seu ambiente:
+2. Abra o arquivo `config.json` e configure os caminhos do After Effects e das pastas de inventário do seu sistema. Variáveis de ambiente como `%USERNAME%` ou `%APPDATA%` serão expandidas automaticamente:
    ```json
    {
-     "afterEffectsPath": "C:\\Program Files\\Adobe\\Adobe After Effects 2024\\Support Files\\AfterFX.exe",
-     "projectBasePath": "d:\\documentos\\Projetos\\AE-mcp",
+     "afterEffectsPath": "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\AfterFX.exe",
+     "projectBasePath": "D:\\documentos\\Projetos\\AE-mcp",
      "dataDir": "data",
-     "logDir": "logs"
+     "logDir": "logs",
+     "inventory": {
+       "pluginDirs": [
+         "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Plug-ins",
+         "C:\\Program Files\\Adobe\\Common\\Plug-ins\\7.0\\MediaCore"
+       ],
+       "scriptDirs": [
+         "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Scripts",
+         "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Scripts\\ScriptUI Panels"
+       ],
+       "presetDirs": [
+         "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Presets"
+       ],
+       "extensionDirs": [
+         "C:\\Program Files (x86)\\Common Files\\Adobe\\CEP\\extensions",
+         "C:\\Users\\%USERNAME%\\AppData\\Roaming\\Adobe\\CEP\\extensions"
+       ],
+       "docDirs": [
+         "knowledge"
+       ]
+     }
    }
-   ```
-   *Nota: No Windows, utilize duas barras invertidas (`\\`) nos caminhos do JSON.*
-
-3. Valide o diagnóstico local de pastas e caminhos executando:
-   ```bash
-   node node/cli.js check-config
    ```
 
 ---
 
-## 🛠️ Como Usar
+## 🛠️ Como Usar a CLI
 
-### Executando pelo Node.js CLI (Recomendado)
-Abra o prompt de comando ou terminal no diretório do projeto e execute:
+Abra o terminal no diretório do projeto e execute:
 
 ```bash
-# Diagnóstico de caminhos e scripts locais
+# 1. Validar configuração local de diretórios e scripts
 node node/cli.js check-config
 
-# Exportar dados da composição ativa
+# 2. Escanear inventário local de arquivos (gera data/local_inventory.json)
+node node/cli.js scan-inventory
+
+# 3. Exportar catálogo de efeitos instalados no AE (gera data/effects_catalog.json)
+node node/cli.js export-effects
+
+# 4. Exportar dados da composição ativa
 node node/cli.js export-active-comp
 
-# Exportar transformações dos layers selecionados
+# 5. Exportar transformações/keyframes dos layers selecionados
 node node/cli.js export-selected-layers
 
-# Verificar se há footages offline
-node node/cli.js check-missing-footage
-
-# Escanear erros de expressões no projeto
+# 6. Escanear erros de expressões no projeto
 node node/cli.js check-expression-errors
 
-# Aplicar efeito de Shake (tremor)
+# 7. Aplicar presets seguros (cria cópia da composição)
 node node/cli.js mmv-shake
-
-# Aplicar efeito de Zoom Impact
 node node/cli.js zoom-impact
-
-# Aplicar Flicker de opacidade
 node node/cli.js text-flicker
 ```
 
 > [!WARNING]
 > **Sincronismo de Execução**:
-> O CLI do Node envia o comando de execução e retorna sucesso imediatamente após o After Effects aceitar o script. Para verificar se o script JSX executou com sucesso interno (ou se deu erro de permissão/objeto), consulte o arquivo de log gerado em [ae_bridge.log](file:///d:/documentos/Projetos/AE-mcp/logs/ae_bridge.log) e verifique os resultados exportados na pasta `data/`.
-
-
-### Executando Manualmente dentro do After Effects
-Caso queira executar os scripts diretamente pelo After Effects sem usar o Node.js:
-1. Vá em **File > Scripts > Run Script File...** (Arquivo > Scripts > Executar Arquivo de Script...).
-2. Escolha o script desejado na pasta `jsx/` (ou `jsx/presets/`).
+> Comandos que iniciam o After Effects (como `export-effects` ou `mmv-shake`) retornam sucesso na CLI assim que o After Effects aceita o script. Verifique o arquivo `logs/ae_bridge.log` e a pasta `data/` para acompanhar o status e o resultado das execuções internas do JSX.
 
 ---
 
-## 🔄 Fluxo de Trabalho Recomendado com IA
+## 💡 Pasta `knowledge/` (Base de Conhecimento)
 
-1. Abra o After Effects e carregue seu projeto `.aep`.
-2. Abra a composição que deseja trabalhar no painel de visualização (Active Comp).
-3. Selecione os layers que serão alvos de animação.
-4. Execute o exportador de dados da CLI:
-   ```bash
-   node node/cli.js export-active-comp
-   ```
-5. Forneça o arquivo gerado em `data/active_comp.json` para o seu Agente de IA.
-6. A IA analisa as camadas, durações e o contexto do vídeo.
-7. O Agente de IA recomenda a aplicação de presets locais através da CLI (ex: `zoom-impact`).
-8. O preset gera a nova composição modificada mantendo o seu projeto original intocado.
-
----
-
-## 🔮 Futuro do Projeto
-* **Model Context Protocol (MCP)**: Integração com servidores MCP para permitir que o Agente de IA execute comandos da CLI de forma autônoma e em tempo real.
-* **Painel CEP/UX**: Interface interna dentro do After Effects para interação direta e chat com IA.
-* **Renderização Automatizada**: Integração com `aerender` para exportação rápida de previews em vídeo.
+A pasta `knowledge/` serve para guardar anotações manuais em Markdown sobre fluxos de trabalho (MMV), parâmetros ideais de efeitos de glow/shake, limitações e guias rápidos de uso de ferramentas complexas (como Duik Angela, AutoSway, RTFX) para consulta direta da IA. Veja mais em [knowledge/README.md](file:///d:/documentos/Projetos/AE-mcp/knowledge/README.md).

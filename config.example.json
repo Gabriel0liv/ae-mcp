@@ -1,6 +1,26 @@
 {
-  "afterEffectsPath": "C:\\Program Files\\Adobe\\Adobe After Effects 2024\\Support Files\\AfterFX.exe",
-  "projectBasePath": "d:\\documentos\\Projetos\\AE-mcp",
+  "afterEffectsPath": "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\AfterFX.exe",
+  "projectBasePath": "D:\\documentos\\Projetos\\AE-mcp",
   "dataDir": "data",
-  "logDir": "logs"
+  "logDir": "logs",
+  "inventory": {
+    "pluginDirs": [
+      "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Plug-ins",
+      "C:\\Program Files\\Adobe\\Common\\Plug-ins\\7.0\\MediaCore"
+    ],
+    "scriptDirs": [
+      "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Scripts",
+      "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Scripts\\ScriptUI Panels"
+    ],
+    "presetDirs": [
+      "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Presets"
+    ],
+    "extensionDirs": [
+      "C:\\Program Files (x86)\\Common Files\\Adobe\\CEP\\extensions",
+      "C:\\Users\\%USERNAME%\\AppData\\Roaming\\Adobe\\CEP\\extensions"
+    ],
+    "docDirs": [
+      "knowledge"
+    ]
+  }
 }

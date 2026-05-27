@@ -9,14 +9,32 @@ const COMMAND_MAP = {
     'export-selected-layers': 'export_selected_layers.jsx',
     'check-missing-footage': 'check_missing_footage.jsx',
     'check-expression-errors': 'check_expression_errors.jsx',
+    'export-effects': 'export_effects_catalog.jsx',
     'mmv-shake': 'mmv_shake_selected.jsx',
     'zoom-impact': 'zoom_impact_selected.jsx',
     'text-flicker': 'text_flicker_selected.jsx'
 };
 
+// Command: scan-inventory (runs locally in Node.js, without opening After Effects)
+if (command === 'scan-inventory') {
+    const { spawn } = require('child_process');
+    const path = require('path');
+    console.log(`[Ponte] Iniciando varredura local do inventário de ferramentas...\n`);
+    
+    const scanProcess = spawn(process.execPath, [path.join(__dirname, 'scan-inventory.js')], {
+        stdio: 'inherit'
+    });
+    
+    scanProcess.on('close', (code) => {
+        process.exit(code);
+    });
+    return;
+}
+
 // Special diagnostics command (runs without spawning AE)
 if (command === 'check-config') {
     const fs = require('fs');
+    const path = require('path');
     console.log(`
 =============================================================================
 Diagnóstico de Configuração - AE-mcp
@@ -60,13 +78,60 @@ Diagnóstico de Configuração - AE-mcp
         }
     }
 
-    // 5. Check JSX scripts
-    console.log(`[+] Verificando scripts ExtendScript (.jsx)...`);
+    // 5. Check Inventory Paths (Rule 6: non-existent dirs generate warning, NOT fatal error)
+    const inventoryConfig = paths.config.inventory || {};
+    const inventoryKeys = [
+        { key: 'pluginDirs', label: 'Plug-ins' },
+        { key: 'scriptDirs', label: 'Scripts/ScriptUI' },
+        { key: 'presetDirs', label: 'Presets' },
+        { key: 'extensionDirs', label: 'CEP Extensions' },
+        { key: 'docDirs', label: 'Documentation/Docs' }
+    ];
+
+    console.log(`\n[+] Verificando diretórios do Inventário local...`);
+    for (const item of inventoryKeys) {
+        const pathsList = inventoryConfig[item.key];
+        if (pathsList && Array.isArray(pathsList)) {
+            console.log(`  * Categoria: ${item.label} (${item.key})`);
+            for (const rawPath of pathsList) {
+                // Expand variables
+                const expanded = rawPath.replace(/%([^%]+)%/g, (_, name) => process.env[name] || `%${name}%`);
+                const resolved = path.isAbsolute(expanded) 
+                    ? expanded 
+                    : path.resolve(paths.projectBasePath, expanded);
+                
+                if (fs.existsSync(resolved)) {
+                    console.log(`    [OK] ${resolved}`);
+                } else {
+                    console.log(`    [AVISO] Não encontrado: ${resolved}`);
+                }
+            }
+        } else {
+            console.log(`  [-] Categoria ausente no config.json: ${item.key}`);
+        }
+    }
+
+    // 6. Check Node script files
+    console.log(`\n[+] Verificando scripts utilitários do Node...`);
+    const nodeScripts = ['paths.js', 'run-ae-script.js', 'cli.js', 'scan-inventory.js'];
+    for (const script of nodeScripts) {
+        const fullPath = path.join(__dirname, script);
+        if (fs.existsSync(fullPath)) {
+            console.log(`    [OK] node/${script}`);
+        } else {
+            console.log(`    [-] FALTANDO: node/${script}`);
+            valid = false;
+        }
+    }
+
+    // 7. Check JSX scripts
+    console.log(`\n[+] Verificando scripts ExtendScript (.jsx)...`);
     const jsxScripts = [
         'export_active_comp.jsx',
         'export_selected_layers.jsx',
         'check_missing_footage.jsx',
         'check_expression_errors.jsx',
+        'export_effects_catalog.jsx',
         'presets/mmv_shake_selected.jsx',
         'presets/zoom_impact_selected.jsx',
         'presets/text_flicker_selected.jsx',
@@ -101,15 +166,17 @@ Resultado do Diagnóstico: ${valid ? 'SUCESSO (Configuração Válida)' : 'ERRO 
 if (!command || !COMMAND_MAP[command]) {
     console.log(`
 =============================================================================
-AE-MCP Bridge - CLI Local (Fase Bridge/CLI)
+AE-MCP Bridge - CLI Local (Fase Tool Inventory)
 =============================================================================
 Uso:
   node node/cli.js <comando>
 
 Comandos de Utilitários:
-  check-config               Verifica caminhos, executável do AE e scripts.
+  check-config               Verifica caminhos, diretórios de inventário e scripts.
+  scan-inventory             Mapeia localmente plugins, scripts, presets e docs.
 
 Comandos de Leitura (Gera arquivos JSON na pasta 'data/'):
+  export-effects             Exporta catálogo de efeitos instalados no After Effects.
   export-active-comp         Exporta metadados da comp ativa e seus layers.
   export-selected-layers     Exporta transformações e keyframes dos layers selecionados.
   check-missing-footage      Identifica footages ausentes no projeto.
@@ -122,7 +189,8 @@ Comandos de Edição (Cria cópia segura e aplica efeitos/expressões):
 
 Exemplos:
   node node/cli.js check-config
-  node node/cli.js export-active-comp
+  node node/cli.js scan-inventory
+  node node/cli.js export-effects
 =============================================================================
 `);
     process.exit(1);
