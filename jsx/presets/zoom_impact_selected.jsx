@@ -29,6 +29,18 @@ function setKeyframeEasing(prop, keyIdx, influence) {
     }
 }
 
+// Helper to find keyframe index at a specific time with tolerance
+function findKeyAtTime(prop, time, tolerance) {
+    if (!prop || prop.numKeys === 0) return 0;
+    var tol = tolerance !== undefined ? tolerance : 0.01;
+    for (var i = 1; i <= prop.numKeys; i++) {
+        if (Math.abs(prop.keyTime(i) - time) <= tol) {
+            return i;
+        }
+    }
+    return 0;
+}
+
 (function() {
     writeLog("Starting preset: zoom_impact_selected...");
     var comp = checkActiveComp();
@@ -74,13 +86,13 @@ function setKeyframeEasing(prop, keyIdx, influence) {
                     scaleProp.setValueAtTime(tEnd, originalScale);
                     
                     // Ease keyframes
-                    var k1 = scaleProp.nearestKeyIndex(tStart);
-                    var k2 = scaleProp.nearestKeyIndex(tPeak);
-                    var k3 = scaleProp.nearestKeyIndex(tEnd);
+                    var k1 = findKeyAtTime(scaleProp, tStart);
+                    var k2 = findKeyAtTime(scaleProp, tPeak);
+                    var k3 = findKeyAtTime(scaleProp, tEnd);
                     
-                    setKeyframeEasing(scaleProp, k1, 33);
-                    setKeyframeEasing(scaleProp, k2, 75); // Stronger peak easing
-                    setKeyframeEasing(scaleProp, k3, 33);
+                    if (k1 > 0) setKeyframeEasing(scaleProp, k1, 33);
+                    if (k2 > 0) setKeyframeEasing(scaleProp, k2, 75); // Stronger peak easing
+                    if (k3 > 0) setKeyframeEasing(scaleProp, k3, 33);
                     
                     writeLog("Applied Scale keyframes to layer: " + layer.name);
                 }
@@ -108,13 +120,13 @@ function setKeyframeEasing(prop, keyIdx, influence) {
                     positionProp.setValueAtTime(tEnd, originalPos);
                     
                     // Ease keyframes
-                    var kp1 = positionProp.nearestKeyIndex(tStart);
-                    var kp2 = positionProp.nearestKeyIndex(tPeak);
-                    var kp3 = positionProp.nearestKeyIndex(tEnd);
+                    var kp1 = findKeyAtTime(positionProp, tStart);
+                    var kp2 = findKeyAtTime(positionProp, tPeak);
+                    var kp3 = findKeyAtTime(positionProp, tEnd);
                     
-                    setKeyframeEasing(positionProp, kp1, 33);
-                    setKeyframeEasing(positionProp, kp2, 75);
-                    setKeyframeEasing(positionProp, kp3, 33);
+                    if (kp1 > 0) setKeyframeEasing(positionProp, kp1, 33);
+                    if (kp2 > 0) setKeyframeEasing(positionProp, kp2, 75);
+                    if (kp3 > 0) setKeyframeEasing(positionProp, kp3, 33);
                     
                     writeLog("Applied Position keyframes to layer: " + layer.name);
                 }

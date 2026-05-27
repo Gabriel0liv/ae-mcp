@@ -1,5 +1,5 @@
 {
-  "name": "ae-mcp-bridge",
+  "name": "ae-mcp",
   "version": "1.0.0",
   "description": "Local bridge between Adobe After Effects and AI agents",
   "main": "node/cli.js",

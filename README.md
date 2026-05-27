@@ -58,6 +58,11 @@ Para que o After Effects permita que os scripts JSX exportem arquivos JSON locai
    ```
    *Nota: No Windows, utilize duas barras invertidas (`\\`) nos caminhos do JSON.*
 
+3. Valide o diagnóstico local de pastas e caminhos executando:
+   ```bash
+   node node/cli.js check-config
+   ```
+
 ---
 
 ## 🛠️ Como Usar
@@ -66,6 +71,9 @@ Para que o After Effects permita que os scripts JSX exportem arquivos JSON locai
 Abra o prompt de comando ou terminal no diretório do projeto e execute:
 
 ```bash
+# Diagnóstico de caminhos e scripts locais
+node node/cli.js check-config
+
 # Exportar dados da composição ativa
 node node/cli.js export-active-comp
 
@@ -87,6 +95,11 @@ node node/cli.js zoom-impact
 # Aplicar Flicker de opacidade
 node node/cli.js text-flicker
 ```
+
+> [!WARNING]
+> **Sincronismo de Execução**:
+> O CLI do Node envia o comando de execução e retorna sucesso imediatamente após o After Effects aceitar o script. Para verificar se o script JSX executou com sucesso interno (ou se deu erro de permissão/objeto), consulte o arquivo de log gerado em [ae_bridge.log](file:///d:/documentos/Projetos/AE-mcp/logs/ae_bridge.log) e verifique os resultados exportados na pasta `data/`.
+
 
 ### Executando Manualmente dentro do After Effects
 Caso queira executar os scripts diretamente pelo After Effects sem usar o Node.js:
