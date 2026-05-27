@@ -19,6 +19,9 @@
       "C:\\Program Files (x86)\\Common Files\\Adobe\\CEP\\extensions",
       "C:\\Users\\%USERNAME%\\AppData\\Roaming\\Adobe\\CEP\\extensions"
     ],
+    "mixedContentDirs": [
+      "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Plug-ins"
+    ],
     "docDirs": [
       "knowledge"
     ]

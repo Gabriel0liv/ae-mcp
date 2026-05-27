@@ -78,13 +78,14 @@ Diagnóstico de Configuração - AE-mcp
         }
     }
 
-    // 5. Check Inventory Paths (Rule 6: non-existent dirs generate warning, NOT fatal error)
+    // 5. Check Inventory Paths (warnings on missing, NOT fatal errors)
     const inventoryConfig = paths.config.inventory || {};
     const inventoryKeys = [
         { key: 'pluginDirs', label: 'Plug-ins' },
         { key: 'scriptDirs', label: 'Scripts/ScriptUI' },
         { key: 'presetDirs', label: 'Presets' },
         { key: 'extensionDirs', label: 'CEP Extensions' },
+        { key: 'mixedContentDirs', label: 'Mixed Content Folders' },
         { key: 'docDirs', label: 'Documentation/Docs' }
     ];
 
@@ -111,7 +112,48 @@ Diagnóstico de Configuração - AE-mcp
         }
     }
 
-    // 6. Check Node script files
+    // Check for overlaps / duplicate paths in configuration
+    const pluginDirs = inventoryConfig.pluginDirs || [];
+    const mixedContentDirs = inventoryConfig.mixedContentDirs || [];
+    const duplicates = [];
+    for (const p of pluginDirs) {
+        for (const m of mixedContentDirs) {
+            const expP = p.replace(/%([^%]+)%/g, (_, name) => process.env[name] || `%${name}%`);
+            const resP = path.resolve(paths.projectBasePath, expP).toLowerCase();
+            const expM = m.replace(/%([^%]+)%/g, (_, name) => process.env[name] || `%${name}%`);
+            const resM = path.resolve(paths.projectBasePath, expM).toLowerCase();
+            if (resP === resM) {
+                duplicates.push(p);
+            }
+        }
+    }
+    if (duplicates.length > 0) {
+        console.log(`\n[AVISO] Sobreposição configurada detectada entre pluginDirs e mixedContentDirs:`);
+        for (const dup of duplicates) {
+            console.log(`  * ${dup}`);
+        }
+        console.log(`  -> O scanner de inventário desduplicará automaticamente arquivos e grupos durante a varredura.`);
+    }
+
+    // 6. Validate Tool Capabilities Specs
+    console.log(`\n[+] Verificando arquivos de especificações de ferramentas...`);
+    const capabilitiesPath = path.join(paths.projectBasePath, 'data/tool_capabilities.example.json');
+    if (fs.existsSync(capabilitiesPath)) {
+        console.log(`    [OK] data/tool_capabilities.example.json`);
+    } else {
+        console.log(`    [ERRO FORTE] data/tool_capabilities.example.json NÃO ENCONTRADO!`);
+        valid = false;
+    }
+
+    const localCapabilitiesPath = path.join(paths.projectBasePath, 'data/tool_capabilities.json');
+    if (fs.existsSync(localCapabilitiesPath)) {
+        console.log(`    [OK] data/tool_capabilities.json (Especificações locais carregadas)`);
+    } else {
+        console.log(`    [AVISO/RECOMENDAÇÃO] Arquivo local data/tool_capabilities.json ausente.`);
+        console.log(`    -> Copie o modelo 'data/tool_capabilities.example.json' para personalizações privadas.`);
+    }
+
+    // 7. Check Node script files
     console.log(`\n[+] Verificando scripts utilitários do Node...`);
     const nodeScripts = ['paths.js', 'run-ae-script.js', 'cli.js', 'scan-inventory.js'];
     for (const script of nodeScripts) {
@@ -124,7 +166,7 @@ Diagnóstico de Configuração - AE-mcp
         }
     }
 
-    // 7. Check JSX scripts
+    // 8. Check JSX scripts
     console.log(`\n[+] Verificando scripts ExtendScript (.jsx)...`);
     const jsxScripts = [
         'export_active_comp.jsx',

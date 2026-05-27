@@ -8,28 +8,39 @@ Esta fase (**Tool Inventory**) permite mapear o ecossistema local do After Effec
 
 ## 📂 Recursos de Inventário e Catálogos
 
-A ponte opera com dois tipos de rastreamento fundamentais:
+A ponte opera com quatro arquivos de dados e catálogos:
 
 ### 1. Catálogo de Efeitos (`effects_catalog.json`)
-* **Como é gerado**: Executado diretamente dentro do After Effects através do comando `export-effects`.
-* **O que mostra**: A lista real de efeitos instalados que o After Effects **reconhece de fato** (usando `app.effects`), incluindo o Match Name de efeitos de terceiros (ex: Red Giant, Video Copilot, etc.), categorias e versões.
+* **Como é gerado**: Executado diretamente dentro do After Effects com `export-effects`.
+* **O que mostra**: A lista real de efeitos instalados que o After Effects **reconhece de fato** (usando `app.effects`), incluindo Match Names (ex: `ADBE Slider Control`, `ADBE Glass`), categorias e versões.
 
 ### 2. Inventário de Arquivos Locais (`local_inventory.json`)
-* **Como é gerado**: Executado localmente pelo Node.js (sem abrir o After Effects) através do comando `scan-inventory`.
-* **O que mostra**: Arquivos e pastas mapeados recursivamente nas pastas de plugins, scripts, ScriptUI panels, presets e CEP do sistema.
-* **Ferramentas Identificadas**: Classifica se as ferramentas são scripts simples, ScriptUI Panels (como *Duik Angela* e *AutoSway*), extensões CEP/ZXP, presets individuais `.ffx` ou pacotes de presets (como *RTFX*).
+* **Como é gerado**: Executado localmente pelo Node.js com `scan-inventory`.
+* **O que mostra**: Metadados (nome, caminho, extensão, tamanho, data de modificação) de arquivos mapeados de forma dedupada.
+* **Categoria por Contexto**: O campo `category` representa a classificação real baseada na extensão do arquivo e na estrutura do caminho, não sendo uma simples herança da pasta raiz (ex: scripts `.jsxbin` ou presets `.ffx` localizados dentro de subpastas do diretório de Plug-ins serão classificados corretamente como `script_compiled` ou `preset`).
 
-### 3. Recursos de Ferramentas (`tool_capabilities.example.json`)
-* **O que é**: Um arquivo de modelo onde o usuário anota as capacidades de automação de ferramentas complexas (Duik Angela, AutoSway, RTFX) para guiar o agente de IA sobre como recomendar, usar ou interagir com cada uma delas.
+### 3. Agrupamento de Ferramentas (`tool_groups.json`)
+* **Como é gerado**: Compilado automaticamente durante a execução do comando `scan-inventory`.
+* **O que mostra**: Pastas agrupadas como ferramentas ou pacotes de ferramentas (ex: *RTFX*).
+* **Regras de Agrupamento**: Uma pasta gera um grupo apenas se:
+  * Contiver 2 ou mais arquivos relevantes;
+  * OU o nome da pasta corresponder a um termo conhecido (ex: *Duik, AutoSway, RTFX, Red Giant, Sapphire, BCC, Mister Horse*);
+  * OU contiver uma mistura de tipos de arquivos relevantes (ex: scripts + presets, plugins + scripts).
+* **Metadados de Grupo**: Inclui o nível de confiança do mapeamento (`high`, `medium`, `low`), categorização (`tool_package`, `preset_pack`, `mixed_tool_package`, etc.), as extensões encontradas e uma justificativa explicativa (`reason`).
+
+### 4. Capacidades das Ferramentas (`tool_capabilities.example.json` / `tool_capabilities.json`)
+* **O que é**: Mapeamento que ensina à IA os casos de uso, nível de automação e limitações de cada ferramenta.
+* **Uso Local**: O arquivo `tool_capabilities.example.json` é versionado no Git como modelo. Copie-o para criar o arquivo local **`data/tool_capabilities.json`**.
+* **Segurança do Usuário**: O arquivo real `data/tool_capabilities.json` é ignorado pelo Git, permitindo que você adicione anotações privadas, caminhos específicos do seu ambiente e preferências pessoais.
 
 ---
 
 ## 🔒 Regras de Segurança e Privacidade
 
-O escaneamento local foi projetado seguindo princípios rígidos de segurança e privacidade:
-* **Sem Leitura de Binários**: Arquivos compactados ou compilados (`.aex`, `.zxp`, `.jsxbin`, `.ffx`) **nunca** são abertos ou lidos pelo conteúdo. Apenas seus metadados (nome, tamanho, data de modificação e caminho) são mapeados.
-* **Filtro Antivazamento de Licenças**: O scanner ignora automaticamente qualquer arquivo ou pasta que contenha em seu nome termos associados a ativações, senhas ou licenças (ex: `license`, `licence`, `serial`, `keygen`, `crack`, `activation`, `token`, `password`).
-* **Sem Transferência de Arquivos**: Nenhum binário ou arquivo de script é copiado, movido ou transmitido para fora do seu computador. Tudo permanece local.
+O escaneamento local foi projetado seguindo princípios rígidos de privacidade:
+* **Strict Metadata-Only (Sem Leitura de Conteúdo)**: Nenhum arquivo é aberto ou lido internamente (isso inclui arquivos de script `.jsx`, textos `.txt`, Markdown `.md`, HTML `.html`, JSON `.json` ou documentos `.pdf`). Apenas atributos do sistema de arquivos são catalogados.
+* **Filtro de Diretórios e Arquivos Sensíveis**: O scanner ignora completamente qualquer diretório ou arquivo que contenha termos de chaves, senhas, licenças ou hacks. Se uma pasta for nomeada com um termo sensível (ex: `license`, `serial`, `keygen`, `crack`, `auth`, `credentials`), ela e todo o seu conteúdo são sumariamente ignorados.
+* **Sem Transferência ou Cópia**: Nenhum binário ou dado local é movido ou transmitido. Tudo permanece no seu computador.
 
 ---
 
@@ -47,7 +58,7 @@ Para permitir exportações de metadados dentro do After Effects:
    ```bash
    copy config.example.json config.json
    ```
-2. Abra o arquivo `config.json` e configure os caminhos do After Effects e das pastas de inventário do seu sistema. Variáveis de ambiente como `%USERNAME%` ou `%APPDATA%` serão expandidas automaticamente:
+2. Abra o arquivo `config.json` e configure os caminhos do After Effects e das pastas de inventário do seu sistema. Utilize `mixedContentDirs` para diretórios que contenham múltiplos tipos de ferramentas misturadas (como a pasta `Plug-ins` do After Effects 2025):
    ```json
    {
      "afterEffectsPath": "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\AfterFX.exe",
@@ -70,11 +81,18 @@ Para permitir exportações de metadados dentro do After Effects:
          "C:\\Program Files (x86)\\Common Files\\Adobe\\CEP\\extensions",
          "C:\\Users\\%USERNAME%\\AppData\\Roaming\\Adobe\\CEP\\extensions"
        ],
+       "mixedContentDirs": [
+         "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\Plug-ins"
+       ],
        "docDirs": [
          "knowledge"
        ]
      }
    }
+   ```
+3. Valide o diagnóstico local de pastas e caminhos executando:
+   ```bash
+   node node/cli.js check-config
    ```
 
 ---
@@ -87,7 +105,7 @@ Abra o terminal no diretório do projeto e execute:
 # 1. Validar configuração local de diretórios e scripts
 node node/cli.js check-config
 
-# 2. Escanear inventário local de arquivos (gera data/local_inventory.json)
+# 2. Mapear inventário e grupos locais (gera data/local_inventory.json e data/tool_groups.json)
 node node/cli.js scan-inventory
 
 # 3. Exportar catálogo de efeitos instalados no AE (gera data/effects_catalog.json)

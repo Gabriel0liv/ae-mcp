@@ -2,9 +2,17 @@ node_modules/
 config.json
 .DS_Store
 
-# Ignore all data outputs except the .gitkeep
+# Ignore all data outputs except the .gitkeep and tool_capabilities.example.json
 data/*
+!data/
 !data/.gitkeep
+!data/tool_capabilities.example.json
+
+# Local generated output files (ignored by Git)
+data/local_inventory.json
+data/tool_groups.json
+data/effects_catalog.json
+data/tool_capabilities.json
 
 # Ignore all generated outputs except the .gitkeep
 generated/*

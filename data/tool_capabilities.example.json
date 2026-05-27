@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Duik Angela",
+    "kind": "scriptui_panel",
+    "automationLevel": "manual_panel_only",
+    "useFor": ["rigging", "bones", "controllers", "character animation"],
+    "mmvUseCases": ["rig de personagem", "movimento controlado", "puppet animation"],
+    "recommendedWhen": ["quando precisar animar personagem, braço, cabelo, corpo ou câmera com controle"],
+    "avoidWhen": ["quando só precisa de shake simples ou zoom impact"],
+    "notes": "Usado principalmente via painel. O AE-mcp pode recomendar fluxo de uso, mas não deve tentar clicar na UI automaticamente.",
+    "relatedFiles": [],
+    "callableCommand": null,
+    "applyablePresetPath": null,
+    "effectMatchName": null
+  },
+  {
+    "name": "AutoSway",
+    "kind": "scriptui_panel",
+    "automationLevel": "manual_panel_only",
+    "useFor": ["sway", "secondary motion", "hair", "clothes", "chains"],
+    "mmvUseCases": ["movimento secundário em cabelo, roupas, correntes e acessórios"],
+    "recommendedWhen": ["quando o layer precisa parecer vivo sem keyframes manuais demais"],
+    "avoidWhen": ["quando o movimento precisa ser totalmente sincronizado com beat frame a frame"],
+    "notes": "Ferramenta recomendável para MMV com movimento orgânico.",
+    "relatedFiles": [],
+    "callableCommand": null,
+    "applyablePresetPath": null,
+    "effectMatchName": null
+  },
+  {
+    "name": "RTFX",
+    "kind": "preset_pack",
+    "automationLevel": "applyable_preset",
+    "useFor": ["transitions", "impacts", "shake", "glitch", "camera movement"],
+    "mmvUseCases": ["transições rápidas, impactos no beat, shake, glitch e highlights"],
+    "recommendedWhen": ["quando precisa de efeito visual rápido e estilizado"],
+    "avoidWhen": ["quando o visual precisa ser completamente custom/scripted"],
+    "notes": "Detectar presets .ffx e packs relacionados no scan-inventory.",
+    "relatedFiles": [],
+    "callableCommand": null,
+    "applyablePresetPath": null,
+    "effectMatchName": null
+  }
+]
