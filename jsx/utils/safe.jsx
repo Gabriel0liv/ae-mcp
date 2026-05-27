@@ -134,30 +134,34 @@ function getSelectedLayersSafe(comp) {
 
 // Return structured error if no layers are selected, writing it to data/<command>_status.json (or selected_layers.json)
 function requireSelectedLayers(comp, commandName) {
+    var date = new Date();
+    var dateStr = date.toISOString ? date.toISOString() : date.toString();
+    var errPayload = null;
+    
     if (!comp) {
-        return {
+        errPayload = {
             ok: false,
             code: "NO_ACTIVE_COMP",
             command: commandName,
             message: "Nenhuma composição ativa encontrada.",
-            suggestedFix: "Abra ou selecione uma composição no After Effects e tente novamente."
-        };
-    }
-    
-    var selected = comp.selectedLayers;
-    if (!selected || selected.length === 0) {
-        var date = new Date();
-        var dateStr = date.toISOString ? date.toISOString() : date.toString();
-        
-        var errPayload = {
-            ok: false,
-            code: "NO_SELECTED_LAYERS",
-            command: commandName,
-            message: "Nenhum layer selecionado.",
-            suggestedFix: "Selecione um ou mais layers na timeline antes de rodar este comando.",
+            suggestedFix: "Abra ou selecione uma composição antes de rodar este comando.",
             createdAt: dateStr
         };
-        
+    } else {
+        var selected = comp.selectedLayers;
+        if (!selected || selected.length === 0) {
+            errPayload = {
+                ok: false,
+                code: "NO_SELECTED_LAYERS",
+                command: commandName,
+                message: "Nenhum layer selecionado.",
+                suggestedFix: "Selecione um ou mais layers na timeline antes de rodar este comando.",
+                createdAt: dateStr
+            };
+        }
+    }
+    
+    if (errPayload) {
         try {
             var root = getProjectRootDir();
             var dataFolder = new Folder(root.fsName + "/data");
@@ -174,7 +178,7 @@ function requireSelectedLayers(comp, commandName) {
             outFile.open("w");
             outFile.write(JSON.stringify(errPayload));
             outFile.close();
-            writeLog("requireSelectedLayers failed for command '" + commandName + "'. Exported error to: " + outFile.fsName);
+            writeLog("requireSelectedLayers failed for command '" + commandName + "' with code " + errPayload.code + ". Exported error to: " + outFile.fsName);
         } catch(e) {
             writeLog("CRITICAL: Failed to write requireSelectedLayers status: " + e.toString());
         }

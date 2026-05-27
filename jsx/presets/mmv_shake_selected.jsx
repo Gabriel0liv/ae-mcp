@@ -8,9 +8,9 @@ var SHAKE_AMPLITUDE = 25;  // Pixels (wiggle amplitude)
 
 (function() {
     writeLog("Starting preset: mmv_shake_selected...");
-    var comp = checkActiveComp();
-    if (!comp) {
-        return;
+    var comp = app.project ? app.project.activeItem : null;
+    if (!comp || !(comp instanceof CompItem)) {
+        comp = null;
     }
     
     var err = requireSelectedLayers(comp, "mmv-shake");

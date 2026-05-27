@@ -9,9 +9,9 @@ var FLICKER_MAX_OPACITY = 100;  // Maximum opacity
 
 (function() {
     writeLog("Starting preset: text_flicker_selected...");
-    var comp = checkActiveComp();
-    if (!comp) {
-        return;
+    var comp = app.project ? app.project.activeItem : null;
+    if (!comp || !(comp instanceof CompItem)) {
+        comp = null;
     }
     
     var err = requireSelectedLayers(comp, "text-flicker");

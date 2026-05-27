@@ -43,9 +43,9 @@ function findKeyAtTime(prop, time, tolerance) {
 
 (function() {
     writeLog("Starting preset: zoom_impact_selected...");
-    var comp = checkActiveComp();
-    if (!comp) {
-        return;
+    var comp = app.project ? app.project.activeItem : null;
+    if (!comp || !(comp instanceof CompItem)) {
+        comp = null;
     }
     
     var err = requireSelectedLayers(comp, "zoom-impact");

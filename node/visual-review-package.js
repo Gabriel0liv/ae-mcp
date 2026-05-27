@@ -270,7 +270,7 @@ if (hasFrames && hasPreview) {
 }
 
 // Determine Active Comp Name
-let compName = "caindo"; // Fallback to current project state name
+let compName = "Unknown"; // Fallback when diagnostics are unavailable
 try {
     const diagnosticsPath = path.join(paths.dataDir, "diagnostics.json");
     if (fs.existsSync(diagnosticsPath)) {
@@ -319,7 +319,7 @@ Edite as seções marcadas com \`[PREENCHA AQUI]\` abaixo antes de enviar este p
 * **Caminho do Pacote**: ${packageDir}
 * **Status do Contexto Visual**: **${visualStatus}**
 * **Imagens de Frames Incluídas**: ${hasFrames ? `${frameCount} frame(s)` : 'Nenhuma'}
-* **Preview de Vídeo Incluído**: ${hasPreview ? 'Sim (MP4)' : 'Não'}
+* **Preview de Vídeo Incluído**: ${hasPreview ? `Sim (${path.extname(previewFileName).slice(1).toUpperCase()})` : 'Não'}
 
 ---
 
