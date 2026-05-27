@@ -293,6 +293,18 @@ if (isProjectWide) {
     bestNextCommand = "node node/cli.js scan-inventory";
 }
 
+// Heuristic override for deep property tree extraction
+const deepKeywords = ["efeito", "glow", "curvas", "curva", "expressão", "expressao", "propriedade", "keyframes", "keyframe", "velocidade", "easing", "transição", "transicao"];
+const hasDeepKeywords = deepKeywords.some(k => lowerQuery.includes(k));
+
+if (hasDeepKeywords) {
+    bestNextCommand = "node node/cli.js export-review-package --run-checks --deep";
+    recommendedCommands.unshift("node node/cli.js export-active-comp-deep");
+    recommendedCommands.unshift("node node/cli.js export-review-package --run-checks --deep");
+    filesToSendToAI.push("data/active_comp_deep.json");
+    reason += " (Sugere-se análise profunda via --deep/active_comp_deep.json devido a termos de efeitos/curvas/expressões)";
+}
+
 // Ensure unique files array
 filesToSendToAI = Array.from(new Set(filesToSendToAI));
 

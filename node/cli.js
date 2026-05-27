@@ -6,6 +6,7 @@ const command = process.argv[2];
 // Map command args to corresponding JSX script filenames
 const COMMAND_MAP = {
     'export-active-comp': 'export_active_comp.jsx',
+    'export-active-comp-deep': 'export_active_comp_deep.jsx',
     'export-selected-layers': 'export_selected_layers.jsx',
     'check-missing-footage': 'check_missing_footage.jsx',
     'check-expression-errors': 'check_expression_errors.jsx',
@@ -391,6 +392,7 @@ Diagnóstico de Configuração - AE-mcp
     console.log(`\n[+] Verificando scripts ExtendScript (.jsx)...`);
     const jsxScripts = [
         'export_active_comp.jsx',
+        'export_active_comp_deep.jsx',
         'export_selected_layers.jsx',
         'check_missing_footage.jsx',
         'check_expression_errors.jsx',
@@ -408,7 +410,8 @@ Diagnóstico de Configuração - AE-mcp
         'presets/text_flicker_selected.jsx',
         'utils/json.jsx',
         'utils/safe.jsx',
-        'utils/layer_utils.jsx'
+        'utils/layer_utils.jsx',
+        'utils/property_tree_utils.jsx'
     ];
 
     let missingScriptsCount = 0;
@@ -452,6 +455,7 @@ Comandos de Utilitários:
 Comandos de Leitura e Visual (Gera arquivos na pasta 'data/'):
   export-effects             Exporta catálogo de efeitos instalados no After Effects.
   export-active-comp         Exporta metadados da comp ativa e seus layers.
+  export-active-comp-deep    Exporta metadados profundos (árvore de propriedades e efeitos).
   export-selected-layers     Exporta transformações e keyframes dos layers selecionados.
   check-missing-footage      Identifica footages ausentes no projeto.
   check-expression-errors    Faz varredura profunda por erros de expressões.

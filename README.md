@@ -42,6 +42,20 @@ A ponte opera com quatro arquivos de dados e catálogos:
 
 ---
 
+## 📊 Nível de Detalhe dos Arquivos de Dados
+
+O `AE-mcp` gera diferentes arquivos JSON com níveis variados de escaneamento de propriedades e efeitos para equilibrar performance e profundidade de análise:
+
+| Arquivo de Dados | Origem | Escopo | Efeitos (`effects[]`) | Árvore de Propriedades (`propertyTree`) | Uso Recomendado |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`active_comp.json`** | `export-active-comp` | Comp Ativa | `light` (apenas nome/estado) | Não incluída | Contexto leve de composição ativa. |
+| **`active_comp_deep.json`** | `export-active-comp-deep` | Comp Ativa | `medium` (parâmetros detalhados) | Sim (completa com limites seguros) | Análise profunda da composição ativa de forma automatizada. |
+| **`selected_layers.json`** | `export-selected-layers` | Seleção | `deep` (parâmetros completos) | Sim (completa) | Obter dados ricos apenas das camadas selecionadas. |
+| **`project_map.json`** | `export-project-map` | Todo Projeto | `light` (apenas nome/estado) | Não incluída | Mapear dependências globais e relações entre precomps levemente. |
+| **`project_deep.json`** | `export-project-deep` | Todo Projeto | Configurado em `project_deep_request.json` | Sim (com limites configuráveis) | Análise profunda de todo o projeto de forma offline e manual. |
+
+---
+
 ## 🔒 Regras de Segurança e Privacidade
 
 O escaneamento local segue regras rígidas:
@@ -121,6 +135,9 @@ node node/cli.js export-effects
 # 4. Exportar dados da composição ativa
 node node/cli.js export-active-comp
 
+# 4b. Exportar dados profundos da composição ativa (propriedades, keyframes e efeitos)
+node node/cli.js export-active-comp-deep
+
 # 5. Exportar transformações/keyframes dos layers selecionados
 node node/cli.js export-selected-layers
 
@@ -167,6 +184,10 @@ node node/cli.js export-review-package
 
 # 4. Executar os diagnósticos e exports principais e depois empacotar tudo em lote
 node node/cli.js export-review-package --run-checks
+
+# 4b. Executar em lote com varredura profunda de propriedades (--deep)
+node node/cli.js export-review-package --run-checks --deep
+node node/cli.js export-visual-review-package --run-checks --deep
 ```
 
 ### Phase 3.5 — Project-Wide Context (Análise de Todo o Projeto)

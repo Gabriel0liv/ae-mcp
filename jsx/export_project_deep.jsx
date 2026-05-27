@@ -1,6 +1,8 @@
 // Export Project Deep Script
 #include "utils/json.jsx"
 #include "utils/safe.jsx"
+#include "utils/layer_utils.jsx"
+#include "utils/property_tree_utils.jsx"
 
 (function() {
     writeLog("Starting export_project_deep...");
@@ -21,7 +23,10 @@
         maxPropertiesPerLayer: 50,
         includeExpressions: true,
         includeExpressionSource: false,
-        includeKeyframes: "summary" // none | summary | values
+        includeKeyframes: "summary", // none | summary | values
+        maxKeyframesPerProperty: 20,
+        maxParametersPerEffect: 80,
+        maxDepth: 8
     };
     
     try {
@@ -38,6 +43,9 @@
                 if (parsed.includeExpressions !== undefined) options.includeExpressions = !!parsed.includeExpressions;
                 if (parsed.includeExpressionSource !== undefined) options.includeExpressionSource = !!parsed.includeExpressionSource;
                 if (parsed.includeKeyframes !== undefined) options.includeKeyframes = parsed.includeKeyframes.toString();
+                if (parsed.maxKeyframesPerProperty !== undefined) options.maxKeyframesPerProperty = parseInt(parsed.maxKeyframesPerProperty);
+                if (parsed.maxParametersPerEffect !== undefined) options.maxParametersPerEffect = parseInt(parsed.maxParametersPerEffect);
+                if (parsed.maxDepth !== undefined) options.maxDepth = parseInt(parsed.maxDepth);
             }
         }
     } catch(e) {
@@ -59,92 +67,14 @@
     var footageMap = {};
     var precompMap = {};
     
-    // Convert property value to a safe JSON format
-    function getSafeValue(val) {
-        if (val === null || val === undefined) return null;
-        if (typeof val === "number" || typeof val === "string" || typeof val === "boolean") return val;
-        if (val.length !== undefined) {
-            var arr = [];
-            for (var i = 0; i < val.length; i++) {
-                arr.push(val[i]);
-            }
-            return arr;
-        }
-        return val.toString();
-    }
+    var scannerOptions = {
+        maxPropertiesPerLayer: options.maxPropertiesPerLayer,
+        maxDepth: options.maxDepth,
+        maxParametersPerEffect: options.maxParametersPerEffect,
+        maxKeyframesPerProperty: options.includeKeyframes === "none" ? 0 : options.maxKeyframesPerProperty,
+        maxStringLength: 300
+    };
     
-    // Recursive property scanner for deep properties
-    function scanPropertiesDeep(propParent, layer, layerData, state) {
-        if (!propParent) return;
-        if (state.propCount >= options.maxPropertiesPerLayer) {
-            state.truncated = true;
-            return;
-        }
-        
-        try {
-            for (var i = 1; i <= propParent.numProperties; i++) {
-                if (state.propCount >= options.maxPropertiesPerLayer) {
-                    state.truncated = true;
-                    break;
-                }
-                
-                var prop = propParent.property(i);
-                if (prop instanceof Property) {
-                    state.propCount++;
-                    var propData = {
-                        name: prop.name,
-                        path: propParent.name + " > " + prop.name,
-                        value: getSafeValue(prop.value)
-                    };
-                    
-                    // Expression handling
-                    if (options.includeExpressions && prop.expressionEnabled) {
-                        propData.hasExpression = true;
-                        var rawExpr = prop.expression ? prop.expression : "";
-                        propData.expressionLength = rawExpr.length;
-                        propData.expressionPreview = rawExpr.length > 60 ? rawExpr.substring(0, 60) + "..." : rawExpr;
-                        if (prop.expressionError) {
-                            propData.expressionError = prop.expressionError;
-                            layerData.expressionErrors.push(prop.name + ": " + prop.expressionError);
-                        }
-                        if (options.includeExpressionSource) {
-                            propData.expressionFull = rawExpr;
-                        }
-                    }
-                    
-                    // Keyframe handling
-                    if (options.includeKeyframes !== "none" && prop.numKeys > 0) {
-                        propData.hasKeyframes = true;
-                        propData.keyframeCount = prop.numKeys;
-                        if (options.includeKeyframes === "values") {
-                            propData.keyframes = [];
-                            var limitKeys = Math.min(prop.numKeys, 20); // Protect against huge keyframe arrays
-                            for (var k = 1; k <= limitKeys; k++) {
-                                propData.keyframes.push({
-                                    index: k,
-                                    time: prop.keyTime(k),
-                                    value: getSafeValue(prop.keyValue(k))
-                                });
-                            }
-                            if (prop.numKeys > 20) {
-                                propData.keyframesWarning = "Truncated to first 20 keyframes.";
-                            }
-                        }
-                    }
-                    
-                    layerData.properties.push(propData);
-                } else if (prop instanceof PropertyGroup) {
-                    scanPropertiesDeep(prop, layer, layerData, state);
-                }
-            }
-        } catch(err) {
-            // Protect against individual property access exceptions
-        }
-    }
-    
-    var compsProcessed = 0;
-    
-    // Gather all comps first to count them
     var allCompItems = [];
     for (var i = 1; i <= project.numItems; i++) {
         var item = project.item(i);
@@ -228,19 +158,8 @@
                 footageMap[footage.id.toString()].compsUsed[comp.id.toString()] = comp.name;
             }
             
-            var effectsList = [];
-            try {
-                if (layer.effect && layer.effect.numProperties > 0) {
-                    for (var e = 1; e <= layer.effect.numProperties; e++) {
-                        var fx = layer.effect.property(e);
-                        effectsList.push({
-                            name: fx.name,
-                            matchName: fx.matchName,
-                            enabled: fx.active
-                        });
-                    }
-                }
-            } catch(e) {}
+            var effects = getLayerEffectsDeep(layer, scannerOptions);
+            var treeRes = getLayerPropertyTree(layer, scannerOptions);
             
             var layerData = {
                 layerIndex: layer.index,
@@ -260,17 +179,16 @@
                 isPrecompLayer: isPrecomp,
                 isFootageLayer: isFootage,
                 is3D: layer.threeDLayer,
-                effects: effectsList,
-                expressionErrors: [],
-                properties: []
+                effects: effects,
+                propertyTree: treeRes.propertyTree,
+                scanSummary: {
+                    propertiesScanned: treeRes.state.propertiesScanned,
+                    expressionCount: treeRes.state.expressionCount,
+                    expressionErrorCount: treeRes.state.expressionErrorCount,
+                    keyframedPropertyCount: treeRes.state.keyframedPropertyCount
+                },
+                scanErrors: treeRes.state.scanErrors
             };
-            
-            // Perform deep scan of properties
-            var state = { propCount: 0, truncated: false };
-            scanPropertiesDeep(layer, layer, layerData, state);
-            if (state.truncated) {
-                layerData.propertiesWarning = "Propriedades limitadas a " + options.maxPropertiesPerLayer + " itens.";
-            }
             
             compData.layers.push(layerData);
         }
@@ -320,6 +238,5 @@
         writeLog("Successfully exported project deep scan to: " + outFile.fsName);
     } catch(err) {
         writeLog("ERROR writing project_deep.json: " + err.toString());
-        alert("Erro ao gravar project_deep.json: " + err.toString());
     }
 })();

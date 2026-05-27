@@ -129,14 +129,22 @@
                 // Scan effects
                 var effectsList = [];
                 try {
-                    if (layer.effect && layer.effect.numProperties > 0) {
-                        for (var e = 1; e <= layer.effect.numProperties; e++) {
-                            var fx = layer.effect.property(e);
-                            effectsList.push({
-                                name: fx.name,
-                                matchName: fx.matchName,
-                                enabled: fx.active
-                            });
+                    var effectGroup = layer.property("ADBE Effect Group");
+                    if (effectGroup !== null) {
+                        for (var e = 1; e <= effectGroup.numProperties; e++) {
+                            var fx = effectGroup.property(e);
+                            if (fx) {
+                                var enabledVal = false;
+                                try { enabledVal = fx.enabled; } catch (eFx) {}
+                                var activeVal = false;
+                                try { activeVal = fx.active; } catch (eFx) {}
+                                effectsList.push({
+                                    name: fx.name,
+                                    matchName: fx.matchName || "",
+                                    enabled: enabledVal,
+                                    active: activeVal
+                                });
+                            }
                         }
                     }
                 } catch(e) {}
@@ -233,6 +241,5 @@
         writeLog("Successfully exported project map to: " + outFile.fsName);
     } catch(err) {
         writeLog("ERROR writing project_map.json: " + err.toString());
-        alert("Erro ao gravar project_map.json: " + err.toString());
     }
 })();

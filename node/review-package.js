@@ -33,9 +33,10 @@ function runCommandAndWaitForFile(fileKey, cliArg, targetFilePath, timeoutMs = 1
 }
 
 const runChecks = process.argv.includes('--run-checks');
+const hasDeep = process.argv.includes('--deep');
 
 const expectedAEFiles = [
-    { key: "active_comp.json", path: "active_comp.json", runArg: "export-active-comp" },
+    { key: hasDeep ? "active_comp_deep.json" : "active_comp.json", path: hasDeep ? "active_comp_deep.json" : "active_comp.json", runArg: hasDeep ? "export-active-comp-deep" : "export-active-comp" },
     { key: "selected_layers.json", path: "selected_layers.json", runArg: "export-selected-layers" },
     { key: "expression_errors.json", path: "expression_errors.json", runArg: "check-expression-errors" },
     { key: "missing_footage.json", path: "missing_footage.json", runArg: "check-missing-footage" },
@@ -85,7 +86,8 @@ fs.mkdirSync(packageDir, { recursive: true });
 console.log(`\n[Revisão] Criando pacote de revisão em: ${packageDir}`);
 
 const filesToCopy = [
-    { key: "active_comp.json", source: path.join(paths.dataDir, "active_comp.json") },
+    { key: "active_comp.json", source: path.join(paths.dataDir, "active_comp.json"), optional: hasDeep },
+    { key: "active_comp_deep.json", source: path.join(paths.dataDir, "active_comp_deep.json"), optional: !hasDeep },
     { key: "selected_layers.json", source: path.join(paths.dataDir, "selected_layers.json"), optional: true },
     { key: "expression_errors.json", source: path.join(paths.dataDir, "expression_errors.json") },
     { key: "missing_footage.json", source: path.join(paths.dataDir, "missing_footage.json") },
@@ -224,7 +226,7 @@ ${missingFiles.length > 0 ? missingFiles.map(f => `  * ${f}`).join('\n') : '  * 
 ## Instruções para o Assistente de IA
 Como assistente especializado em After Effects, MMV e anime edits:
 1. Analise o arquivo \`diagnostics.json\` para mapear problemas técnicos (como opacidade zero, falta de motion blur ou erros de expressões).
-2. Analise os arquivos \`active_comp.json\` e \`selected_layers.json\` para entender a hierarquia de layers e keyframes do usuário.
+2. Analise os arquivos \`active_comp.json\`, \`active_comp_deep.json\` (se disponível) e \`selected_layers.json\` para entender a hierarquia de layers e keyframes do usuário.
 3. Compare o setup do usuário com as ferramentas mapeadas em \`local_inventory.json\` e \`tool_capabilities.json\`.
 4. Elabore um plano de ação recomendando correções manuais passo a passo ou propondo códigos JSX seguros para aplicar correções na composição.
 `;

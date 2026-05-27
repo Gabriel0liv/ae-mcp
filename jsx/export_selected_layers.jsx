@@ -2,6 +2,7 @@
 #include "utils/json.jsx"
 #include "utils/safe.jsx"
 #include "utils/layer_utils.jsx"
+#include "utils/property_tree_utils.jsx"
 
 (function() {
     writeLog("Starting export_selected_layers...");
@@ -36,6 +37,14 @@
     var layersData = [];
     var selectedLayers = getLayersByIndices(comp, selectedIndices);
     
+    var options = {
+        maxPropertiesPerLayer: 500,
+        maxDepth: 8,
+        maxParametersPerEffect: 80,
+        maxKeyframesPerProperty: 20,
+        maxStringLength: 300
+    };
+    
     for (var i = 0; i < selectedLayers.length; i++) {
         var layer = selectedLayers[i];
         var parentIdx = null;
@@ -43,12 +52,24 @@
             parentIdx = layer.parent.index;
         }
         
+        var effects = getLayerEffectsDeep(layer, options);
+        var treeRes = getLayerPropertyTree(layer, options);
+        
         var layerData = {
             index: layer.index,
             name: layer.name,
             type: getLayerType(layer),
             parentIndex: parentIdx,
-            transforms: getLayerTransforms(layer)
+            transforms: getLayerTransforms(layer),
+            effects: effects,
+            propertyTree: treeRes.propertyTree,
+            scanSummary: {
+                propertiesScanned: treeRes.state.propertiesScanned,
+                expressionCount: treeRes.state.expressionCount,
+                expressionErrorCount: treeRes.state.expressionErrorCount,
+                keyframedPropertyCount: treeRes.state.keyframedPropertyCount
+            },
+            scanErrors: treeRes.state.scanErrors
         };
         
         layersData.push(layerData);

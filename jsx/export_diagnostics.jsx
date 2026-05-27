@@ -5,9 +5,25 @@
 (function() {
     writeLog("Starting export_diagnostics...");
     
-    var comp = checkActiveComp();
-    if (!comp) {
-        writeLog("ERROR: No active composition found for diagnostics.");
+    var comp = app.project ? app.project.activeItem : null;
+    if (!comp || !(comp instanceof CompItem)) {
+        var errPayload = {
+            ok: false,
+            code: "NO_ACTIVE_COMP",
+            message: "Nenhuma composição ativa encontrada para diagnósticos.",
+            summary: { errors: 0, warnings: 0, info: 0 },
+            diagnostics: []
+        };
+        try {
+            var root = getProjectRootDir();
+            var dataFolder = new Folder(root.fsName + "/data");
+            if (!dataFolder.exists) dataFolder.create();
+            var outFile = new File(dataFolder.fsName + "/diagnostics.json");
+            outFile.open("w");
+            outFile.write(JSON.stringify(errPayload));
+            outFile.close();
+            writeLog("ERROR: No active composition found for diagnostics.");
+        } catch(e) {}
         return;
     }
     
@@ -22,6 +38,40 @@
         diagnostics: []
     };
     
+    function getPropertyPath(prop) {
+        if (!prop) return "";
+        var path = [];
+        var current = prop;
+        var count = 0;
+        while (current && count < 20) {
+            path.unshift(current.name);
+            try {
+                current = current.parentProperty;
+            } catch (e) {
+                break;
+            }
+            count++;
+        }
+        return path.join(" > ");
+    }
+    
+    function isEffectProperty(prop) {
+        var current = prop;
+        var count = 0;
+        while (current && count < 10) {
+            try {
+                if (current.parentProperty && current.parentProperty.matchName === "ADBE Effect Group") {
+                    return true;
+                }
+                current = current.parentProperty;
+            } catch (e) {
+                break;
+            }
+            count++;
+        }
+        return false;
+    }
+    
     // Recursive property scanner for expression errors, keyframe proximity, and easing
     function scanProperties(propParent, layer) {
         if (!propParent) return;
@@ -31,17 +81,44 @@
                 if (prop instanceof Property) {
                     // Check expression error
                     if (prop.expressionEnabled && prop.expressionError !== "") {
+                        var isFx = isEffectProperty(prop);
+                        var code = isFx ? "EFFECT_EXPRESSION_ERROR" : "PROPERTY_EXPRESSION_ERROR";
+                        var msg = isFx
+                            ? "Erro na expressão do parâmetro '" + prop.name + "' do efeito '" + (prop.parentProperty ? prop.parentProperty.name : "") + "' no layer '" + layer.name + "': " + prop.expressionError
+                            : "Erro na expressão da propriedade '" + prop.name + "' no layer '" + layer.name + "': " + prop.expressionError;
+                        
                         data.diagnostics.push({
                             severity: "error",
                             confidence: "high",
-                            code: "EXPRESSION_ERROR",
-                            message: "Erro na expressão da propriedade '" + prop.name + "' no layer '" + layer.name + "': " + prop.expressionError,
+                            code: code,
+                            message: msg,
                             layerIndex: layer.index,
                             layerName: layer.name,
-                            propertyPath: propParent.name + " > " + prop.name,
-                            suggestedFix: "Corrija a sintaxe da expressão ou nomes de layers referenciados, ou clique no '=' para desativar a expressão."
+                            propertyPath: getPropertyPath(prop),
+                            suggestedFix: "Corrija a sintaxe da expressão ou nomes de layers/propriedades referenciados."
                         });
                         data.summary.errors++;
+                    }
+                    
+                    // Check keyframes count (many keyframes warning)
+                    if (prop.numKeys > 50) {
+                        var isFx = isEffectProperty(prop);
+                        var code = isFx ? "EFFECT_MANY_KEYFRAMES" : "PROPERTY_TOO_MANY_KEYFRAMES";
+                        var msg = isFx 
+                            ? "O parâmetro '" + prop.name + "' do efeito '" + (prop.parentProperty ? prop.parentProperty.name : "") + "' possui muitos keyframes (" + prop.numKeys + ")."
+                            : "A propriedade '" + prop.name + "' do layer '" + layer.name + "' possui muitos keyframes (" + prop.numKeys + ").";
+                        
+                        data.diagnostics.push({
+                            severity: "info",
+                            confidence: "high",
+                            code: code,
+                            message: msg,
+                            layerIndex: layer.index,
+                            layerName: layer.name,
+                            propertyPath: getPropertyPath(prop),
+                            suggestedFix: "Muitos keyframes aumentam o tamanho do arquivo. Considere usar expressões ou simplificar a animação."
+                        });
+                        data.summary.info++;
                     }
                     
                     // Check keyframes proximity and lack of easing
@@ -69,7 +146,7 @@
                                 message: "Keyframes muito próximos detectados na propriedade '" + prop.name + "' do layer '" + layer.name + "'.",
                                 layerIndex: layer.index,
                                 layerName: layer.name,
-                                propertyPath: propParent.name + " > " + prop.name,
+                                propertyPath: getPropertyPath(prop),
                                 suggestedFix: "Ajuste o espaçamento dos keyframes na timeline para evitar animações imperceptíveis ou trancos indesejados."
                             });
                             data.summary.info++;
@@ -82,7 +159,7 @@
                                 message: "Keyframes sem atenuação (interpolação linear) detectados na propriedade '" + prop.name + "' do layer '" + layer.name + "'.",
                                 layerIndex: layer.index,
                                 layerName: layer.name,
-                                propertyPath: propParent.name + " > " + prop.name,
+                                propertyPath: getPropertyPath(prop),
                                 suggestedFix: "Selecione os keyframes, pressione F9 (Easy Ease) e edite as curvas no gráfico de velocidade para obter acelerações suaves."
                             });
                             data.summary.info++;
@@ -291,7 +368,7 @@
                     severity: "warning",
                     confidence: "high",
                     code: "THREE_D_LAYER_NO_ACTIVE_CAMERA",
-                    message: "O layer '" + layer.name + "' está configurado como 3D, mas a composição não possui câmera ativa.",
+                    message: "O layer '" + layer.name + "' está configurado como 3D, mas a composição não possui câmera activa.",
                     layerIndex: layer.index,
                     layerName: layer.name,
                     propertyPath: "Layer > 3D Spatial",
@@ -318,21 +395,27 @@
         
         // 13. Disabled effects
         try {
-            if (layer.effect && layer.effect.numProperties > 0) {
-                for (var e = 1; e <= layer.effect.numProperties; e++) {
-                    var fx = layer.effect.property(e);
-                    if (!fx.active) {
-                        data.diagnostics.push({
-                            severity: "warning",
-                            confidence: "high",
-                            code: "EFFECTS_DISABLED",
-                            message: "O efeito '" + fx.name + "' do layer '" + layer.name + "' está desativado.",
-                            layerIndex: layer.index,
-                            layerName: layer.name,
-                            propertyPath: "Effects > " + fx.name,
-                            suggestedFix: "Ative a caixa 'fx' ao lado do efeito no painel de controle se quiser que ele renderize."
-                        });
-                        data.summary.warnings++;
+            var effectGroup = layer.property("ADBE Effect Group");
+            if (effectGroup !== null) {
+                for (var e = 1; e <= effectGroup.numProperties; e++) {
+                    var fx = effectGroup.property(e);
+                    if (fx) {
+                        var enabledVal = false;
+                        try { enabledVal = fx.enabled; } catch(eFx) {}
+                        
+                        if (!enabledVal) {
+                            data.diagnostics.push({
+                                severity: "warning",
+                                confidence: "high",
+                                code: "EFFECT_DISABLED",
+                                message: "O efeito '" + fx.name + "' do layer '" + layer.name + "' está desativado.",
+                                layerIndex: layer.index,
+                                layerName: layer.name,
+                                propertyPath: "Effects > " + fx.name,
+                                suggestedFix: "Ative a caixa 'fx' ao lado do efeito no painel de controle se quiser que ele renderize."
+                            });
+                            data.summary.warnings++;
+                        }
                     }
                 }
             }

@@ -3,11 +3,52 @@
 #include "utils/safe.jsx"
 #include "utils/layer_utils.jsx"
 
+function getLayerEffectsLight(layer) {
+    var list = [];
+    try {
+        var effectGroup = layer.property("ADBE Effect Group");
+        if (effectGroup !== null) {
+            for (var i = 1; i <= effectGroup.numProperties; i++) {
+                var effect = effectGroup.property(i);
+                if (effect) {
+                    var enabledVal = false;
+                    try { enabledVal = effect.enabled; } catch (e) {}
+                    var activeVal = false;
+                    try { activeVal = effect.active; } catch (e) {}
+                    list.push({
+                        name: effect.name,
+                        matchName: effect.matchName || "",
+                        enabled: enabledVal,
+                        active: activeVal
+                    });
+                }
+            }
+        }
+    } catch (e) {}
+    return list;
+}
+
 (function() {
     writeLog("Starting export_active_comp...");
-    var comp = checkActiveComp();
-    if (!comp) {
-        alert("Nenhuma composicao ativa encontrada. Abra uma composicao e tente novamente.");
+    var comp = app.project ? app.project.activeItem : null;
+    if (!comp || !(comp instanceof CompItem)) {
+        var errPayload = {
+            ok: false,
+            code: "NO_ACTIVE_COMP",
+            command: "export-active-comp",
+            message: "Nenhuma composição ativa encontrada.",
+            suggestedFix: "Abra ou selecione uma composição no After Effects e tente novamente."
+        };
+        try {
+            var root = getProjectRootDir();
+            var dataFolder = new Folder(root.fsName + "/data");
+            if (!dataFolder.exists) dataFolder.create();
+            var outFile = new File(dataFolder.fsName + "/active_comp.json");
+            outFile.open("w");
+            outFile.write(JSON.stringify(errPayload));
+            outFile.close();
+            writeLog("ERROR: No active composition found for export-active-comp.");
+        } catch(e) {}
         return;
     }
     
@@ -73,7 +114,8 @@
             blendingMode: String(layer.blendingMode),
             hasEffects: hasEffects,
             hasMasks: hasMasks,
-            hasExpressionInTransform: hasExpr
+            hasExpressionInTransform: hasExpr,
+            effects: getLayerEffectsLight(layer)
         };
         
         compData.layers.push(layerInfo);
@@ -92,6 +134,5 @@
         writeLog("Successfully exported active comp to: " + outFile.fsName);
     } catch (err) {
         writeLog("ERROR writing active_comp.json: " + err.toString());
-        alert("Erro ao gravar arquivo de dados: " + err.toString());
     }
 })();

@@ -30,6 +30,7 @@ function runCommandAndWaitForFile(fileKey, cliArg, targetFilePath, timeoutMs = 1
 }
 
 const runChecks = process.argv.includes('--run-checks');
+const hasDeep = process.argv.includes('--deep');
 const now = new Date();
 
 if (runChecks) {
@@ -56,13 +57,18 @@ if (runChecks) {
         runCommandAndWaitForFile("effects_catalog.json", "export-effects", effectsPath, 25000);
     }
     
-    // 3. Run diagnostics, project summary, project map, and timeline frames
     const runTargets = [
         { key: "diagnostics.json", path: "diagnostics.json", runArg: "export-diagnostics" },
         { key: "project_summary.json", path: "project_summary.json", runArg: "export-project-summary" },
         { key: "project_map.json", path: "project_map.json", runArg: "export-project-map" },
         { key: "frames_context.json", path: "visual_snapshots/frames/frames_context.json", runArg: "export-timeline-frames" }
     ];
+    
+    if (hasDeep) {
+        runTargets.unshift({ key: "active_comp_deep.json", path: "active_comp_deep.json", runArg: "export-active-comp-deep" });
+    } else {
+        runTargets.unshift({ key: "active_comp.json", path: "active_comp.json", runArg: "export-active-comp" });
+    }
     
     for (const target of runTargets) {
         const fullPath = path.join(paths.dataDir, target.path);
@@ -88,7 +94,8 @@ fs.mkdirSync(packageDir, { recursive: true });
 
 // Copy technical JSON files
 const filesToCopy = [
-    { key: "active_comp.json", source: path.join(paths.dataDir, "active_comp.json") },
+    { key: "active_comp.json", source: path.join(paths.dataDir, "active_comp.json"), optional: hasDeep },
+    { key: "active_comp_deep.json", source: path.join(paths.dataDir, "active_comp_deep.json"), optional: !hasDeep },
     { key: "selected_layers.json", source: path.join(paths.dataDir, "selected_layers.json"), optional: true },
     { key: "diagnostics.json", source: path.join(paths.dataDir, "diagnostics.json") },
     { key: "expression_errors.json", source: path.join(paths.dataDir, "expression_errors.json") },
@@ -349,7 +356,7 @@ Como assistente de IA especializado em After Effects, edição de MMV e anime ed
 2. **Analise o vídeo de preview (\`preview_lowres.mp4\`)** se disponível, avaliando o ritmo do shake, timing do corte, suavidade de transição e fluidez de movimento.
 3. Compare com os metadados técnicos dos arquivos JSON:
    - \`diagnostics.json\` para checar shy layers, falta de motion blur ou opacidade 0.
-   - \`active_comp.json\` e \`selected_layers.json\` para ver a estrutura e curvas de keyframes.
+   - \`active_comp.json\`, \`active_comp_deep.json\` (se disponível) e \`selected_layers.json\` para ver a estrutura e curvas de keyframes.
    - \`visual_summary.json\` para checar as limitações do pacote.
 4. Forneça diagnósticos claros divididos em:
    - **Problemas Técnicos** (erros no código ou flags de renderização).

@@ -1,6 +1,33 @@
 // Export Composition by Name or ID Script
 #include "utils/json.jsx"
 #include "utils/safe.jsx"
+#include "utils/layer_utils.jsx"
+#include "utils/property_tree_utils.jsx"
+
+function getLayerEffectsLight(layer) {
+    var list = [];
+    try {
+        var effectGroup = layer.property("ADBE Effect Group");
+        if (effectGroup !== null) {
+            for (var i = 1; i <= effectGroup.numProperties; i++) {
+                var effect = effectGroup.property(i);
+                if (effect) {
+                    var enabledVal = false;
+                    try { enabledVal = effect.enabled; } catch (e) {}
+                    var activeVal = false;
+                    try { activeVal = effect.active; } catch (e) {}
+                    list.push({
+                        name: effect.name,
+                        matchName: effect.matchName || "",
+                        enabled: enabledVal,
+                        active: activeVal
+                    });
+                }
+            }
+        }
+    } catch (e) {}
+    return list;
+}
 
 (function() {
     writeLog("Starting export_comp_by_name...");
@@ -22,7 +49,7 @@
     var request = {
         compName: "",
         compId: null,
-        mode: "map"
+        mode: "light"
     };
     
     // Read request file
@@ -66,75 +93,35 @@
         writeLog("ERROR written to " + filename + ": " + message);
     }
     
-    // Convert property value to a safe JSON format
-    function getSafeValue(val) {
-        if (val === null || val === undefined) return null;
-        if (typeof val === "number" || typeof val === "string" || typeof val === "boolean") return val;
-        if (val.length !== undefined) {
-            var arr = [];
-            for (var i = 0; i < val.length; i++) {
-                arr.push(val[i]);
-            }
-            return arr;
-        }
-        return val.toString();
-    }
-    
-    // Recursive property scanner
-    function scanProperties(propParent, layer, mode, layerData) {
+    // Recursive property scanner for map expressions (lightweight)
+    function scanExpressionsLight(propParent, layerExp) {
         if (!propParent) return;
         try {
             for (var i = 1; i <= propParent.numProperties; i++) {
                 var prop = propParent.property(i);
                 if (prop instanceof Property) {
-                    var isDeep = (mode === "deep");
-                    
                     if (prop.expressionEnabled) {
-                        layerData.hasExpression = true;
+                        layerExp.hasExpression = true;
                         var rawExpr = prop.expression ? prop.expression : "";
                         var preview = rawExpr.length > 60 ? rawExpr.substring(0, 60) + "..." : rawExpr;
                         var err = prop.expressionError ? prop.expressionError : "";
                         
-                        var expData = {
-                            propertyPath: propParent.name + " > " + prop.name,
+                        layerExp.list.push({
+                            propertyPath: getPropertyPath(prop),
                             expressionLength: rawExpr.length,
                             expressionPreview: preview,
                             expressionError: err
-                        };
-                        if (isDeep) {
-                            expData.expressionFull = rawExpr;
-                        }
-                        layerData.expressions.push(expData);
+                        });
+                        
                         if (err !== "") {
-                            layerData.expressionErrors.push(prop.name + ": " + err);
+                            layerExp.errors.push(prop.name + ": " + err);
                         }
-                    }
-                    
-                    if (isDeep) {
-                        var propData = {
-                            name: prop.name,
-                            path: propParent.name + " > " + prop.name,
-                            value: getSafeValue(prop.value)
-                        };
-                        if (prop.numKeys > 0) {
-                            propData.hasKeyframes = true;
-                            propData.keyframeCount = prop.numKeys;
-                            propData.keyframes = [];
-                            var limitKeys = Math.min(prop.numKeys, 20);
-                            for (var k = 1; k <= limitKeys; k++) {
-                                propData.keyframes.push({
-                                    time: prop.keyTime(k),
-                                    value: getSafeValue(prop.keyValue(k))
-                                });
-                            }
-                        }
-                        layerData.properties.push(propData);
                     }
                 } else if (prop instanceof PropertyGroup) {
-                    scanProperties(prop, layer, mode, layerData);
+                    scanExpressionsLight(prop, layerExp);
                 }
             }
-        } catch(e) {}
+        } catch(err) {}
     }
     
     // Find comps matching criteria
@@ -183,6 +170,14 @@
         layers: []
     };
     
+    var options = {
+        maxPropertiesPerLayer: 500,
+        maxDepth: 8,
+        maxParametersPerEffect: 80,
+        maxKeyframesPerProperty: 20,
+        maxStringLength: 300
+    };
+    
     for (var j = 1; j <= targetComp.numLayers; j++) {
         var layer = targetComp.layer(j);
         
@@ -198,20 +193,6 @@
         
         var isPrecomp = (layer.source && layer.source instanceof CompItem);
         var isFootage = (layer.source && layer.source instanceof FootageItem);
-        
-        var effectsList = [];
-        try {
-            if (layer.effect && layer.effect.numProperties > 0) {
-                for (var e = 1; e <= layer.effect.numProperties; e++) {
-                    var fx = layer.effect.property(e);
-                    effectsList.push({
-                        name: fx.name,
-                        matchName: fx.matchName,
-                        enabled: fx.active
-                    });
-                }
-            }
-        } catch(e) {}
         
         var layerData = {
             layerIndex: layer.index,
@@ -231,18 +212,32 @@
             isPrecompLayer: isPrecomp,
             isFootageLayer: isFootage,
             is3D: layer.threeDLayer,
-            effects: effectsList,
-            hasExpression: false,
-            expressionErrors: [],
-            expressions: [],
             markerCount: (layer.marker && layer.marker.numKeys) ? layer.marker.numKeys : 0
         };
         
         if (request.mode === "deep") {
-            layerData.properties = [];
+            var effects = getLayerEffectsDeep(layer, options);
+            var treeRes = getLayerPropertyTree(layer, options);
+            layerData.effects = effects;
+            layerData.propertyTree = treeRes.propertyTree;
+            layerData.scanSummary = {
+                propertiesScanned: treeRes.state.propertiesScanned,
+                expressionCount: treeRes.state.expressionCount,
+                expressionErrorCount: treeRes.state.expressionErrorCount,
+                keyframedPropertyCount: treeRes.state.keyframedPropertyCount
+            };
+            layerData.scanErrors = treeRes.state.scanErrors;
+        } else if (request.mode === "map") {
+            layerData.effects = getLayerEffectsLight(layer);
+            var layerExp = { hasExpression: false, list: [], errors: [] };
+            scanExpressionsLight(layer, layerExp);
+            layerData.hasExpression = layerExp.hasExpression;
+            layerData.expressionErrors = layerExp.errors;
+            layerData.expressions = layerExp.list;
+        } else {
+            // "light" mode (default)
+            layerData.effects = getLayerEffectsLight(layer);
         }
-        
-        scanProperties(layer, layer, request.mode, layerData);
         
         compData.layers.push(layerData);
     }
@@ -254,9 +249,8 @@
         outFile.open("w");
         outFile.write(JSON.stringify(compData));
         outFile.close();
-        writeLog("Successfully exported comp '" + targetComp.name + "' to: " + outFile.fsName);
+        writeLog("Successfully exported comp '" + targetComp.name + "' with mode '" + request.mode + "' to: " + outFile.fsName);
     } catch(err) {
         writeLog("ERROR writing comp file: " + err.toString());
-        alert("Erro ao gravar comp file: " + err.toString());
     }
 })();
