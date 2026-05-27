@@ -13,6 +13,7 @@
     
     var data = {
         diagnosticScope: comp.name,
+        selectedLayerCount: comp.selectedLayers.length,
         summary: {
             errors: 0,
             warnings: 0,
@@ -369,7 +370,7 @@
             severity: "info",
             confidence: "high",
             code: "SELECTED_LAYERS_MISSING",
-            message: "Não há nenhum layer selecionado na composição ativa.",
+            message: "Nenhum layer está selecionado; diagnósticos gerais da composição/projeto ainda foram executados.",
             layerIndex: 0,
             layerName: "Composition Selection",
             propertyPath: "Composition > Selection",
@@ -392,6 +393,5 @@
         writeLog("Successfully exported diagnostics for composition '" + comp.name + "' to: " + outFile.fsName);
     } catch(err) {
         writeLog("ERROR writing diagnostics.json: " + err.toString());
-        alert("Erro ao gravar diagnostics.json: " + err.toString());
     }
 })();

@@ -233,6 +233,33 @@ node node/cli.js export-visual-review-package --run-checks
   * **Atenção**: Sem o vídeo de preview, a IA não possui contexto de movimento e **não deve** fazer afirmações definitivas sobre a fluidez do timing, pacing ou transições de corte.
 * **Segurança e Isolamento**: Nenhuma imagem ou vídeo é enviado externamente de forma automática. O empacotamento é totalmente local. O processo de restauração de tempo em `export-timeline-frames` usa tratamento de erro robusto (`try/catch/finally`) para garantir que a agulha de tempo (`comp.time`) sempre volte à sua posição original mesmo se houver erro ao salvar as imagens.
 
+---
+
+### ⚠️ Diretrizes de Seleção de Layers
+
+Para otimizar o fluxo de trabalho automatizado e evitar interrupções na interface gráfica do After Effects, o `AE-mcp` divide seus comandos em duas categorias em relação à seleção de layers na timeline:
+
+1. **Comandos Globais (Review & Diagnósticos)**:
+   * **NÃO exigem seleção de layers** para funcionar.
+   * Comandos: `export-diagnostics`, `export-review-package`, `export-visual-review-package`, `export-project-summary`, `export-project-map`, `export-frame-snapshot`, `export-timeline-frames`.
+   * Se nenhum layer estiver selecionado, a execução **continua normalmente** (sem popups ou travamentos). A ausência de seleção é registrada apenas como uma observação informativa (`SELECTED_LAYERS_MISSING`) no JSON e os pacotes de revisão técnica/visual permanecem 100% válidos para envio à IA.
+
+2. **Comandos de Ação e Efeitos (Presets)**:
+   * **EXIGEM obrigatoriamente a seleção** de um ou mais layers para serem aplicados.
+   * Comandos: `export-selected-layers`, `mmv-shake`, `zoom-impact`, `text-flicker`.
+   * Se nenhum layer estiver selecionado, a execução é **bloqueada de forma segura** (sem exibir popups de alerta que travam a interface). O script gera um arquivo de erro JSON correspondente (ex: `selected_layers.json` ou `mmv-shake_status.json`) contendo a falha estruturada:
+     ```json
+     {
+       "ok": false,
+       "code": "NO_SELECTED_LAYERS",
+       "command": "mmv-shake",
+       "message": "Nenhum layer selecionado.",
+       "suggestedFix": "Selecione um ou mais layers na timeline antes de rodar este comando."
+     }
+     ```
+
+---
+
 ### Exemplos Práticos de Uso
 
 #### Exemplo A: "como faço um impacto no beat?"

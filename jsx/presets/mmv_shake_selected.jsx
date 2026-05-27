@@ -10,17 +10,15 @@ var SHAKE_AMPLITUDE = 25;  // Pixels (wiggle amplitude)
     writeLog("Starting preset: mmv_shake_selected...");
     var comp = checkActiveComp();
     if (!comp) {
-        alert("Nenhuma composicao ativa encontrada.");
         return;
     }
     
-    // Capture indices from the original composition
-    var selectedIndices = getSelectedLayerIndices(comp);
-    if (selectedIndices.length === 0) {
-        alert("Por favor, selecione pelo menos um layer para aplicar o shake.");
-        writeLog("WARNING: No layers selected for preset: mmv_shake_selected");
+    var err = requireSelectedLayers(comp, "mmv-shake");
+    if (err) {
         return;
     }
+    
+    var selectedIndices = getSelectedLayerIndices(comp);
     
     wrapUndoGroup("MMV Shake Selected Layers", function() {
         // Safe duplication of the composition
@@ -57,6 +55,6 @@ var SHAKE_AMPLITUDE = 25;  // Pixels (wiggle amplitude)
             }
         }
         
-        alert("Preset de Shake aplicado com sucesso na composicao duplicada: " + newComp.name);
+        writeLog("Preset de Shake aplicado com sucesso na composicao duplicada: " + newComp.name);
     });
 })();

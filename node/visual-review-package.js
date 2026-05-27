@@ -89,7 +89,7 @@ fs.mkdirSync(packageDir, { recursive: true });
 // Copy technical JSON files
 const filesToCopy = [
     { key: "active_comp.json", source: path.join(paths.dataDir, "active_comp.json") },
-    { key: "selected_layers.json", source: path.join(paths.dataDir, "selected_layers.json") },
+    { key: "selected_layers.json", source: path.join(paths.dataDir, "selected_layers.json"), optional: true },
     { key: "diagnostics.json", source: path.join(paths.dataDir, "diagnostics.json") },
     { key: "expression_errors.json", source: path.join(paths.dataDir, "expression_errors.json") },
     { key: "missing_footage.json", source: path.join(paths.dataDir, "missing_footage.json") },
@@ -117,14 +117,36 @@ if (fs.existsSync(deepPath)) {
 
 const includedFiles = [];
 const missingFiles = [];
+const optionalUnavailableFiles = [];
 
 for (const fileItem of filesToCopy) {
+    let existsAndValid = false;
+    if (fs.existsSync(fileItem.source)) {
+        try {
+            const content = fs.readFileSync(fileItem.source, 'utf8');
+            const parsed = JSON.parse(content);
+            if (parsed && parsed.ok === false) {
+                existsAndValid = false;
+            } else {
+                existsAndValid = true;
+            }
+        } catch(e) {
+            existsAndValid = true;
+        }
+    }
+    
     if (fs.existsSync(fileItem.source)) {
         const destName = path.basename(fileItem.source);
         fs.copyFileSync(fileItem.source, path.join(packageDir, destName));
         includedFiles.push(destName);
-    } else {
-        missingFiles.push(fileItem.key);
+    }
+    
+    if (!existsAndValid) {
+        if (fileItem.optional) {
+            optionalUnavailableFiles.push(fileItem.key);
+        } else {
+            missingFiles.push(fileItem.key);
+        }
     }
 }
 
@@ -364,12 +386,16 @@ const manifest = {
     packagePath: packageDir,
     includedFiles: includedFiles,
     missingFiles: missingFiles,
+    optionalUnavailableFiles: optionalUnavailableFiles,
     includedVisualFiles: includedVisualFiles,
     missingVisualFiles: missingVisualFiles,
     visualContextStatus: visualStatus,
     recommendedNextCommands: recommendedNextCommands.length > 0 ? recommendedNextCommands : ["Nenhum. Todos os arquivos de contexto estão completos."],
     userPromptTemplate: `Olá! Criei um pacote de revisão visual da minha composição do After Effects. Por favor, analise as mídias e JSONs localizados em "${packageDir.replace(/\\/g, '/')}" com base nas orientações do arquivo prompt_for_visual_ai.md.`,
-    notesForAI: "Este pacote contém imagens/vídeo para análise estética direta por IAs com capacidade multimodal."
+    notesForAI: "Este pacote contém imagens/vídeo para análise estética direta por IAs com capacidade multimodal.",
+    note: optionalUnavailableFiles.includes("selected_layers.json") 
+        ? "No selected layers were available; package still valid for comp/project review." 
+        : "Selected layers and composition context successfully packaged."
 };
 
 fs.writeFileSync(path.join(packageDir, 'visual_review_manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');

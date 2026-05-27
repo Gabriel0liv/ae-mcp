@@ -45,16 +45,15 @@ function findKeyAtTime(prop, time, tolerance) {
     writeLog("Starting preset: zoom_impact_selected...");
     var comp = checkActiveComp();
     if (!comp) {
-        alert("Nenhuma composicao ativa encontrada.");
+        return;
+    }
+    
+    var err = requireSelectedLayers(comp, "zoom-impact");
+    if (err) {
         return;
     }
     
     var selectedIndices = getSelectedLayerIndices(comp);
-    if (selectedIndices.length === 0) {
-        alert("Por favor, selecione pelo menos um layer para aplicar o zoom impact.");
-        writeLog("WARNING: No layers selected for preset: zoom_impact_selected");
-        return;
-    }
     
     wrapUndoGroup("MMV Zoom Impact Selected Layers", function() {
         // Safe duplication of the composition
@@ -135,6 +134,6 @@ function findKeyAtTime(prop, time, tolerance) {
             }
         }
         
-        alert("Preset de Zoom Impact aplicado com sucesso na composicao duplicada: " + newComp.name);
+        writeLog("Preset de Zoom Impact aplicado com sucesso na composicao duplicada: " + newComp.name);
     });
 })();

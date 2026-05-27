@@ -86,7 +86,7 @@ console.log(`\n[Revisão] Criando pacote de revisão em: ${packageDir}`);
 
 const filesToCopy = [
     { key: "active_comp.json", source: path.join(paths.dataDir, "active_comp.json") },
-    { key: "selected_layers.json", source: path.join(paths.dataDir, "selected_layers.json") },
+    { key: "selected_layers.json", source: path.join(paths.dataDir, "selected_layers.json"), optional: true },
     { key: "expression_errors.json", source: path.join(paths.dataDir, "expression_errors.json") },
     { key: "missing_footage.json", source: path.join(paths.dataDir, "missing_footage.json") },
     { key: "diagnostics.json", source: path.join(paths.dataDir, "diagnostics.json") },
@@ -108,22 +108,44 @@ if (fs.existsSync(localCaps)) {
 
 const includedFiles = [];
 const missingFiles = [];
+const optionalUnavailableFiles = [];
 const recommendedNextCommands = [];
 
 for (const fileItem of filesToCopy) {
+    let existsAndValid = false;
+    if (fs.existsSync(fileItem.source)) {
+        try {
+            const content = fs.readFileSync(fileItem.source, 'utf8');
+            const parsed = JSON.parse(content);
+            if (parsed && parsed.ok === false) {
+                existsAndValid = false;
+            } else {
+                existsAndValid = true;
+            }
+        } catch(e) {
+            existsAndValid = true;
+        }
+    }
+    
     if (fs.existsSync(fileItem.source)) {
         const destName = path.basename(fileItem.source);
         const destPath = path.join(packageDir, destName);
         fs.copyFileSync(fileItem.source, destPath);
         includedFiles.push(destName);
-    } else {
-        missingFiles.push(fileItem.key);
-        // Find if this missing file has an expected AE runner
-        const aeFile = expectedAEFiles.find(f => f.key === fileItem.key);
-        if (aeFile) {
-            recommendedNextCommands.push(`node node/cli.js ${aeFile.runArg}`);
-        } else if (fileItem.key === "local_inventory.json") {
-            recommendedNextCommands.push("node node/cli.js scan-inventory");
+    }
+    
+    if (!existsAndValid) {
+        if (fileItem.optional) {
+            optionalUnavailableFiles.push(fileItem.key);
+        } else {
+            missingFiles.push(fileItem.key);
+            // Find if this missing file has an expected AE runner
+            const aeFile = expectedAEFiles.find(f => f.key === fileItem.key);
+            if (aeFile) {
+                recommendedNextCommands.push(`node node/cli.js ${aeFile.runArg}`);
+            } else if (fileItem.key === "local_inventory.json") {
+                recommendedNextCommands.push("node node/cli.js scan-inventory");
+            }
         }
     }
 }
@@ -231,12 +253,16 @@ const manifest = {
     packagePath: packageDir,
     includedFiles: includedFiles,
     missingFiles: missingFiles,
+    optionalUnavailableFiles: optionalUnavailableFiles,
     visualContextStatus: visualContextAvailable ? "frames_available_via_visual_package" : "not_available",
     latestVisualReviewPackage: latestVisualReviewPackage,
     visualContextAvailable: visualContextAvailable,
     recommendedVisualCommand: "node node/cli.js export-visual-review-package --run-checks",
     recommendedNextCommands: recommendedNextCommands,
-    userPromptTemplate: `Olá! Criei um pacote de revisão técnica da minha composição do After Effects. Por favor, analise os arquivos do pacote localizado em "${packageDir.replace(/\\/g, '/')}" com base nas instruções do arquivo prompt_for_ai.md.`
+    userPromptTemplate: `Olá! Criei um pacote de revisão técnica da minha composição do After Effects. Por favor, analise os arquivos do pacote localizado em "${packageDir.replace(/\\/g, '/')}" com base nas instruções do arquivo prompt_for_ai.md.`,
+    note: optionalUnavailableFiles.includes("selected_layers.json") 
+        ? "No selected layers were available; package still valid for comp/project review." 
+        : "Selected layers and composition context successfully packaged."
 };
 
 fs.writeFileSync(path.join(packageDir, 'review_manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
