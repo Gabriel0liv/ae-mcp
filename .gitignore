@@ -21,3 +21,12 @@ generated/*
 # Ignore all logs except the .gitkeep
 logs/*
 !logs/.gitkeep
+
+# Exclude visual snapshots, previews, and packages from Git
+data/visual_snapshots/
+data/visual_previews/
+data/visual_review_packages/
+!data/visual_snapshots/.gitkeep
+!data/visual_previews/.gitkeep
+!data/visual_review_packages/.gitkeep
+

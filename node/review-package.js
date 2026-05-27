@@ -209,13 +209,32 @@ Como assistente especializado em After Effects, MMV e anime edits:
 
 fs.writeFileSync(path.join(packageDir, 'prompt_for_ai.md'), promptContent, 'utf8');
 
+// Check for latest visual package
+let latestVisualReviewPackage = null;
+let visualContextAvailable = false;
+try {
+    const latestVisualJson = path.join(paths.dataDir, "visual_review_packages", "latest.json");
+    if (fs.existsSync(latestVisualJson)) {
+        const latestVal = JSON.parse(fs.readFileSync(latestVisualJson, 'utf8'));
+        if (latestVal && latestVal.latestPackagePath) {
+            latestVisualReviewPackage = latestVal.latestPackagePath;
+            if (fs.existsSync(latestVisualReviewPackage)) {
+                visualContextAvailable = true;
+            }
+        }
+    }
+} catch(e) {}
+
 // Generate review_manifest.json content
 const manifest = {
     createdAt: now.toISOString(),
     packagePath: packageDir,
     includedFiles: includedFiles,
     missingFiles: missingFiles,
-    visualContextStatus: "not_implemented_yet",
+    visualContextStatus: visualContextAvailable ? "frames_available_via_visual_package" : "not_available",
+    latestVisualReviewPackage: latestVisualReviewPackage,
+    visualContextAvailable: visualContextAvailable,
+    recommendedVisualCommand: "node node/cli.js export-visual-review-package --run-checks",
     recommendedNextCommands: recommendedNextCommands,
     userPromptTemplate: `Olá! Criei um pacote de revisão técnica da minha composição do After Effects. Por favor, analise os arquivos do pacote localizado em "${packageDir.replace(/\\/g, '/')}" com base nas instruções do arquivo prompt_for_ai.md.`
 };

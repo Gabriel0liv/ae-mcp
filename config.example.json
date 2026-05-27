@@ -24,5 +24,13 @@
     "docDirs": [
       "knowledge"
     ]
+  },
+  "render": {
+    "aerenderPath": "D:\\After Effects\\Adobe After Effects 2025\\Support Files\\aerender.exe",
+    "previewWidth": 960,
+    "previewHeight": 540,
+    "previewFrameRate": 24,
+    "previewDurationSeconds": 8,
+    "outputFormat": "mp4"
   }
 }

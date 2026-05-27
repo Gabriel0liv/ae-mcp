@@ -49,8 +49,8 @@ let intent = "plan_workflow";
 let confidence = "low";
 let reason = "Não foi encontrada correspondência forte. Assumindo planejamento de workflow geral.";
 
-const troubleshootKeywords = ["erro", "bug", "falha", "not working", "problema", "nao funciona", "não funciona", "quebrou", "offline", "ausente", "missing", "invalido", "inválido", "warn", "warning", "trava", "lento", "slow", "error"];
-const visualKeywords = ["estranho", "feio", "ugly", "esquisito", "ruim", "olhar", "review", "estilo", "timing", "sincronia", "ritmo", "visual", "timing", "desajustado", "esquisita"];
+const troubleshootKeywords = ["erro", "bug", "falha", "not working", "problema", "nao funciona", "não funciona", "quebrou", "offline", "ausente", "missing", "invalido", "inválido", "warn", "warning", "trava", "error", "dá erro", "da erro"];
+const visualKeywords = ["estranho", "feio", "ugly", "esquisito", "ruim", "olhar", "review", "estilo", "timing", "sincronia", "ritmo", "visual", "desajustado", "esquisita", "glow", "impacto fraco", "fraco", "ilegivel", "ilegível", "poluido", "poluído", "enquadrado", "enquadramento", "cores ruins", "cc ruim", "shake exagerado", "dura", "sem fluidez", "falta de foco"];
 const editKeywords = ["aplicar", "escrever script", "gerar script", "automatizar", "modificar", "alterar", "preset-apply", "aplicar preset", "safe edit", "corrigir com script", "scriptar", "rodar jsx"];
 const howtoKeywords = ["como fazer", "como faço", "como posso", "como criar", "how to", "passos para", "como posicionar", "criar rig", "como configurar", "como animar", "como usar", "como"];
 
@@ -59,14 +59,14 @@ let visualCount = visualKeywords.filter(k => lowerQuery.includes(k)).length;
 let editCount = editKeywords.filter(k => lowerQuery.includes(k)).length;
 let howtoCount = howtoKeywords.filter(k => lowerQuery.includes(k)).length;
 
-if (troubleshootCount > 0) {
-    intent = "troubleshoot";
-    confidence = troubleshootCount > 1 ? "high" : "medium";
-    reason = "Detectado termos relacionados a erros, falhas ou problemas de execução.";
-} else if (visualCount > 0) {
+if (visualCount > 0) {
     intent = "visual_review";
     confidence = visualCount > 1 ? "high" : "medium";
-    reason = "Detectado termos relacionados a avaliação estética, sincronia ou review visual.";
+    reason = "Detectado termos relacionados a avaliação estética, sincronia, enquadramento ou review visual.";
+} else if (troubleshootCount > 0) {
+    intent = "troubleshoot";
+    confidence = troubleshootCount > 1 ? "high" : "medium";
+    reason = "Detectado termos relacionados a erros técnicos, falhas ou problemas de execução de scripts/ferramentas.";
 } else if (editCount > 0) {
     intent = "safe_edit_proposal";
     confidence = editCount > 1 ? "high" : "medium";
@@ -178,6 +178,20 @@ if (matchedFilesSet.size === 0) {
     }
 }
 
+if (intent === "visual_review") {
+    const visualWorkflows = [
+        "workflows/scene-composition.md",
+        "workflows/color-correction.md",
+        "workflows/mmv-impact.md",
+        "workflows/camera-movement.md",
+        "workflows/glow-and-light.md",
+        "workflows/transitions.md"
+    ];
+    for (var w = 0; w < visualWorkflows.length; w++) {
+        matchedFilesSet.add(visualWorkflows[w]);
+    }
+}
+
 const relevantKnowledgeFiles = Array.from(matchedFilesSet).map(f => `knowledge/${f}`);
 
 // 3. Recommended commands & files to send based on intent
@@ -246,13 +260,22 @@ if (isProjectWide) {
     filesToSendToAI.push("data/active_comp.json", "data/diagnostics.json", "data/expression_errors.json", "data/missing_footage.json");
 } else if (intent === "visual_review") {
     recommendedCommands = [
-        "node node/cli.js export-active-comp",
-        "node node/cli.js export-selected-layers",
         "node node/cli.js export-diagnostics",
-        "node node/cli.js export-review-package"
+        "node node/cli.js export-timeline-frames",
+        "node node/cli.js export-visual-review-package --run-checks"
     ];
-    bestNextCommand = "node node/cli.js export-review-package";
-    filesToSendToAI.push("data/active_comp.json", "data/selected_layers.json", "data/diagnostics.json");
+    bestNextCommand = "node node/cli.js export-visual-review-package --run-checks";
+    
+    try {
+        const latestJsonPath = path.join(paths.dataDir, "visual_review_packages", "latest.json");
+        if (fs.existsSync(latestJsonPath)) {
+            const latest = JSON.parse(fs.readFileSync(latestJsonPath, 'utf8'));
+            if (latest && latest.latestPackagePath) {
+                filesToSendToAI.push(latest.latestPackagePath);
+            }
+        }
+    } catch(e) {}
+    filesToSendToAI.push("data/visual_review_packages/latest.json");
 } else if (intent === "safe_edit_proposal") {
     recommendedCommands = [
         "node node/cli.js export-active-comp",

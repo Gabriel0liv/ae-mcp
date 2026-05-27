@@ -204,6 +204,35 @@ node node/cli.js export-comp-by-name 123 deep
 * **Nomes Duplicados**: O comando `export-comp-by-name` lidará de forma segura com composições que possuem nomes idênticos no projeto. Se duplicatas forem encontradas, o comando retornará um arquivo JSON de erro com o código `MULTIPLE_COMPS_FOUND` e uma lista com o ID e o nome de cada correspondência para que você possa especificar o `compId` único na próxima execução.
 ```
 
+### Phase 4 — Visual Review Assistant (Assistente de Revisão Visual)
+
+Esta fase adiciona suporte para a IA analisar frames estáticos e previews de vídeo da composição ativa, permitindo a identificação de problemas estéticos e visuais (enquadramento, intensidade de glow, contraste de cor, legibilidade de texto, ritmo de movimento) que não aparecem nos relatórios puramente de código.
+
+#### Novos Comandos Visuais:
+```bash
+# 1. Exporta um PNG do frame atual na linha do tempo da comp ativa (gera data/visual_snapshots/<timestamp>/current_frame.png)
+node node/cli.js export-frame-snapshot
+
+# 2. Exporta múltiplos frames representativos (início, meio, fim, tempo atual e markers de comp) de forma segura restaurando a agulha de tempo ao final (gera pasta data/visual_snapshots/frames/)
+node node/cli.js export-timeline-frames
+
+# 3. Renderiza um vídeo curto em baixa resolução (MP4) usando aerender.exe para análise de movimento (experimental/best-effort)
+node node/cli.js render-preview
+
+# 4. Compila um pacote completo mesclando relatórios técnicos e mídias visuais (gera data/visual_review_packages/<timestamp>/)
+node node/cli.js export-visual-review-package
+
+# 5. Executa os checks técnicos e visuais principais em lote e empacota tudo junto
+node node/cli.js export-visual-review-package --run-checks
+```
+
+#### Diretrizes de Análise Visual e Limitações:
+* **Frames vs. Vídeo (Preview)**:
+  * **Frames Estáticos (PNG)** são suficientes para análise visual estática (layout, composição de cena, cores, enquadramento de personagem, legibilidade de textos).
+  * **Preview de Vídeo (MP4)** é opcional e experimental (depende do `aerender.exe` configurado e do projeto estar salvo no disco).
+  * **Atenção**: Sem o vídeo de preview, a IA não possui contexto de movimento e **não deve** fazer afirmações definitivas sobre a fluidez do timing, pacing ou transições de corte.
+* **Segurança e Isolamento**: Nenhuma imagem ou vídeo é enviado externamente de forma automática. O empacotamento é totalmente local. O processo de restauração de tempo em `export-timeline-frames` usa tratamento de erro robusto (`try/catch/finally`) para garantir que a agulha de tempo (`comp.time`) sempre volte à sua posição original mesmo se houver erro ao salvar as imagens.
+
 ### Exemplos Práticos de Uso
 
 #### Exemplo A: "como faço um impacto no beat?"
