@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "ae-mcp": {
+      "command": "node",
+      "args": [
+        "D:\\documentos\\Projetos\\AE-mcp\\node\\mcp-server.mjs"
+      ]
+    }
+  }
+}
